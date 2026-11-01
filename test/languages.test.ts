@@ -28,6 +28,13 @@ it("langName falls back to the code", () => {
   expect(langEnglish("und")).toBe("und");
   expect(langEnglish("ht")).toBe("Haitian Creole");
 });
+it("an odd sourceLang from the model never crashes the lookup", () => {
+  for (const odd of ["constructor", "__proto__", "toString", "hasOwnProperty", " ", "zh-"]) {
+    expect(langName(odd)).toBe(odd);
+    expect(langEnglish(odd)).toBe(odd);
+    expect(isLang(odd)).toBe(false);
+  }
+});
 it("langName understands the alias and case a model may answer with", () => {
   expect(langName("zh")).toBe(langName("zh-CN"));
   expect(langName("ZH-tw")).toBe(langName("zh-TW"));

@@ -204,9 +204,13 @@ export const LANGUAGES: readonly Language[] = [
 
 const byCode = new Map<string, Language>(LANGUAGES.map((l) => [l.code, l]));
 // Codes a model may answer with: the alternates Google lists for the same language, in any letter case.
-const ALIAS: Record<string, string> = { zh: "zh-CN", iw: "he", tl: "fil", jw: "jv" };
+// (Maps, not objects: a model may answer "constructor" and an object lookup would find Object.prototype's.)
+const ALIAS = new Map([["zh", "zh-cn"], ["iw", "he"], ["tl", "fil"], ["jw", "jv"]]);
 const byLower = new Map<string, Language>(LANGUAGES.map((l) => [l.code.toLowerCase(), l]));
-const find = (code: string) => byCode.get(code) ?? byLower.get(ALIAS[code.toLowerCase()]?.toLowerCase() ?? code.toLowerCase());
+const find = (code: string) => {
+  const lower = code.toLowerCase();
+  return byCode.get(code) ?? byLower.get(ALIAS.get(lower) ?? lower);
+};
 
 // Strict: used to validate what a client sends. Aliases are for display only.
 export const isLang = (code: string): boolean => byCode.has(code);
