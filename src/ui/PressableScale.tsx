@@ -13,6 +13,7 @@ export function PressableScale({
   disabled, onPressIn, onPressOut, className, style: base, ...props
 }: Omit<PressableProps, "style"> & { className?: string; style?: StyleProp<ViewStyle> }) {
   const reduceMotion = useReducedMotion();
+  const { selected, expanded, busy } = props.accessibilityState ?? {}; // react-native-web ignores accessibilityState: mirror it as aria-*
   const pressed = useSharedValue(0);
   const style = useAnimatedStyle(() => ({
     opacity: disabled ? 0.4 : 1 - 0.15 * pressed.value,
@@ -24,6 +25,9 @@ export function PressableScale({
   return (
     <AnimatedPressable
       {...props}
+      aria-selected={selected}
+      aria-expanded={expanded}
+      aria-busy={busy}
       disabled={disabled}
       onPressIn={(e) => {
         to(1);
