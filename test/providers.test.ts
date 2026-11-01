@@ -25,6 +25,7 @@ it.each([
   ["unknown provider", '{"provider":"grok","key":"k","model":"m"}'],
   ["empty key", '{"provider":"openai","key":"","model":"m"}'],
   ["missing model", '{"provider":"openai","key":"k"}'],
+  ["inherited property as provider", '{"provider":"constructor","key":"k","model":"m"}'],
 ])("parseSettings returns null for %s", (_name, raw) => {
   expect(parseSettings(raw)).toBeNull();
 });

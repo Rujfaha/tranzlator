@@ -138,7 +138,7 @@ function Form({ initial, onClose, onSave }: Omit<Props, "open">) {
 
             <View className="gap-1.5">
               <Pressable accessibilityRole="link" onPress={() => Linking.openURL(info.keyUrl)} className="min-h-11 justify-center">
-                <Text className="font-sans text-body text-ink underline">ขอ API key ได้ที่ {new URL(info.keyUrl).host}</Text>
+                <Text className="font-sans text-body text-ink underline">ขอ API key ได้ที่ {info.keyUrl.split("/")[2]}</Text>
               </Pressable>
               <Text className="font-sans text-note text-muted">
                 {Platform.OS === "web" ? "key เก็บในเบราว์เซอร์นี้เท่านั้น" : "key เก็บในเครื่องนี้เท่านั้น"}

@@ -12,7 +12,7 @@ export const PROVIDER_INFO: Record<Provider, { label: string; defaultModel: stri
 export function parseSettings(raw: string | null): AiSettings | null {
   try {
     const s = JSON.parse(raw ?? "");
-    if (s.provider in PROVIDER_INFO && typeof s.key === "string" && s.key && typeof s.model === "string" && s.model) {
+    if (Object.hasOwn(PROVIDER_INFO, s.provider) && typeof s.key === "string" && s.key && typeof s.model === "string" && s.model) {
       return { provider: s.provider, key: s.key, model: s.model };
     }
   } catch {}
