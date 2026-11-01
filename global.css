@@ -1,0 +1,11 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Keyboard focus ring on web (2px ink, offset 2). Native has no Tab focus. */
+@layer base {
+  :focus-visible {
+    outline: 2px solid theme("colors.ink");
+    outline-offset: 2px;
+  }
+}
