@@ -8,7 +8,7 @@ import { loadSettings, saveSettings } from "../settings";
 import { BottomDock } from "../ui/BottomDock";
 import { ContextDeck } from "../ui/ContextDeck";
 import { Header } from "../ui/Header";
-import { KeySuggestion } from "../ui/KeySuggestion";
+import { KeyTip, type Rect } from "../ui/KeyTip";
 import { ChevronDown } from "../ui/icons";
 import { isWide } from "../ui/layout";
 import { LanguageMenu } from "../ui/LanguageMenu";
@@ -38,6 +38,10 @@ export default function Index() {
   const [ai, setAi] = useState<AiSettings | null>(null);
   const [settingsLoaded, setSettingsLoaded] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [tipDismissed, setTipDismissed] = useState(false); // closed with X this session: no automatic tip, but "แปล" without a key still shows it
+  const [tipVisible, setTipVisible] = useState(false);
+  const [tipAnchor, setTipAnchor] = useState<Rect | null>(null);
+  const settingsIcon = useRef<ComponentRef<typeof View>>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<{ message: string; status?: number } | null>(null);
   const [data, setData] = useState<TranslateResponse | null>(null);
@@ -56,11 +60,33 @@ export default function Index() {
     });
   }, []);
 
+  const needsKey = settingsLoaded && !ai;
+  const showTip = tipVisible && needsKey; // saving a key hides it at once
+  const requestKey = () => setTipVisible(true);
+  const openSettings = () => {
+    setTipVisible(false);
+    setTipDismissed(true);
+    setSettingsOpen(true);
+  };
+  const measureIcon = () =>
+    settingsIcon.current?.measureInWindow((x, y, w, h) =>
+      setTipAnchor((a) => (a && a.x === x && a.y === y && a.width === w && a.height === h ? a : { x, y, width: w, height: h })),
+    );
+
+  // First visit without a key: show the tip shortly after the first render.
+  useEffect(() => {
+    if (!needsKey || tipDismissed) return;
+    const t = setTimeout(() => setTipVisible(true), 400);
+    return () => clearTimeout(t);
+  }, [needsKey, tipDismissed]);
+  // The icon moves when the window resizes or rotates (and, via onScroll, when the page scrolls).
+  useEffect(() => {
+    if (showTip) measureIcon();
+  }, [showTip, width, height]);
+
   async function submit() {
     if (!ai) {
-      if (settingsLoaded) {
-        toast.show({ kind: "info", message: "ใส่ API key ในการตั้งค่าก่อนแปล", action: { label: "ตั้งค่า", onPress: () => setSettingsOpen(true) } });
-      }
+      if (settingsLoaded) requestKey();
       return;
     }
     if (translating.current) return;
@@ -103,7 +129,6 @@ export default function Index() {
     }
   }
 
-  const needsKey = settingsLoaded && !ai;
   const header = (
     <Header
       compact={compact}
@@ -116,7 +141,8 @@ export default function Index() {
         setError(null);
         setSelected(null);
       }}
-      onSettings={() => setSettingsOpen(true)}
+      onSettings={openSettings}
+      settingsRef={settingsIcon}
     />
   );
   const source = (
@@ -128,7 +154,6 @@ export default function Index() {
       onChange={setText}
       onSubmit={submit}
       loading={loading}
-      disabled={!ai}
     />
   );
   const pickLang = (lang: Lang) => {
@@ -180,7 +205,7 @@ export default function Index() {
         selected={selected}
         onSelect={setSelected}
         onRetry={submit}
-        onSettings={error?.status === 401 ? () => setSettingsOpen(true) : undefined}
+        onSettings={error?.status === 401 ? openSettings : undefined}
         onAdd={add}
         adding={adding}
         draft={draft}
@@ -188,36 +213,38 @@ export default function Index() {
       />
     ) : null;
   const placeholder = <Text className="font-sans text-source-md text-disabled">คำแปลแต่ละบริบทจะแสดงที่นี่</Text>;
-  const suggestion = needsKey ? <KeySuggestion onShell={wide} onPress={() => setSettingsOpen(true)} /> : null;
-  // Wide: one grey card holds hint + results (or the empty text). Mobile: the hint sits under the input, results follow.
   const results = deck ?? placeholder;
 
   return (
     <SafeAreaView edges={wide ? undefined : ["top", "left", "right"]} className="flex-1 bg-paper">
       <KeyboardAvoidingView behavior={wide ? "height" : undefined} className="flex-1">
         {wide ? (
-          <WideLayout compact={compact} header={header} tabs={tabs} source={source} results={<>{suggestion}{results}</>} />
+          <WideLayout compact={compact} header={header} tabs={tabs} source={source} results={results} onScroll={measureIcon} />
         ) : (
           <MobileLayout
             header={header}
             source={source}
             paste={text.length === 0 ? <PasteChip onPaste={setText} /> : null}
-            suggestion={suggestion}
             results={deck}
             scrollKey={batch}
+            onScroll={measureIcon}
             dock={
               <BottomDock
                 detected={data ? langName(data.sourceLang) : undefined}
                 target={target}
                 onOpenLanguages={() => setSheetOpen(true)}
                 onTranslate={submit}
-                canTranslate={!!ai && text.trim().length > 0 && text.length <= 2000}
+                canTranslate={text.trim().length > 0 && text.length <= 2000}
                 loading={loading}
               />
             }
           />
         )}
       </KeyboardAvoidingView>
+      <KeyTip visible={showTip} anchor={tipAnchor} onOpenSettings={openSettings} onDismiss={() => {
+        setTipVisible(false);
+        setTipDismissed(true);
+      }} />
       <LanguageMenu
         open={menuOpen}
         anchor={anchor}

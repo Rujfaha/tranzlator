@@ -17,17 +17,16 @@ type Props = {
   onChange: (value: string) => void;
   onSubmit: () => void;
   loading: boolean;
-  disabled?: boolean; // e.g. no API key yet
   variant: "card" | "bare"; // card: bordered box with its own translate button (wide); bare: borderless, translate lives in the dock (mobile)
   size: ReturnType<typeof sourceSize>;
   compact?: boolean;
 };
 
-export function SourcePane({ value, onChange, onSubmit, loading, disabled, variant, size, compact }: Props) {
+export function SourcePane({ value, onChange, onSubmit, loading, variant, size, compact }: Props) {
   const over = value.length > MAX_SOURCE;
   const ready = value.trim().length > 0 && !over && !loading;
   // While loading the button keeps its normal look (dots inside) and presses do nothing: submit is single-flight.
-  const canPress = value.trim().length > 0 && !over && !disabled;
+  const canPress = value.trim().length > 0 && !over;
   const card = variant === "card";
   const [focused, setFocused] = useState(false); // the card border stands in for the focus ring around the whole box
   const counter = (
@@ -49,7 +48,7 @@ export function SourcePane({ value, onChange, onSubmit, loading, disabled, varia
         onBlur={() => setFocused(false)}
         onKeyPress={(e) => {
           const k = e.nativeEvent as unknown as { key: string; ctrlKey?: boolean; metaKey?: boolean };
-          if (k.key === "Enter" && (k.ctrlKey || k.metaKey) && ready) onSubmit(); // without a key the page explains why (toast)
+          if (k.key === "Enter" && (k.ctrlKey || k.metaKey) && ready) onSubmit(); // without a key the page shows the key tip
         }}
         accessibilityLabel="ข้อความที่ต้องการแปล"
         placeholder={card ? "พิมพ์ข้อความที่ต้องการแปล" : "แปลข้อความ"}

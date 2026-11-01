@@ -7,12 +7,13 @@ type Props = {
   tabs: { source: ReactNode; target: ReactNode };
   source: ReactNode;
   results: ReactNode;
+  onScroll?: () => void; // the header scrolls with the page, so the key tip re-measures its anchor
 };
 
 // Google Translate web: language tabs over two cards (white bordered source, grey result). One page scroll.
-export function WideLayout({ compact, header, tabs, source, results }: Props) {
+export function WideLayout({ compact, header, tabs, source, results, onScroll }: Props) {
   return (
-    <ScrollView keyboardShouldPersistTaps="handled" className="flex-1 bg-paper" contentContainerClassName="flex-grow">
+    <ScrollView onScroll={onScroll} scrollEventThrottle={16} keyboardShouldPersistTaps="handled" className="flex-1 bg-paper" contentContainerClassName="flex-grow">
       {header}
       <View style={{ maxWidth: 1200 }} className={`w-full self-center ${compact ? "gap-2 px-3 pb-3 pt-1" : "gap-3 px-6 pb-6 pt-3"}`}>
         <View className="flex-row gap-4">
