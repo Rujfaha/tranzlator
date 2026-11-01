@@ -22,7 +22,7 @@
 ```
 
 - Worker ตัวเดียว: เสิร์ฟไฟล์เว็บ (static assets จาก `dist/`) + `/api/*`
-- D1: cache คำแปล + บริบทที่ผู้ใช้เพิ่ม
+- D1: cache คำแปลเฉพาะบริบทที่ AI เลือก (สูงสุด 6) — บริบทที่ผู้ใช้เพิ่มเองไม่เก็บลง D1 ส่งกลับเฉพาะผู้ขอ แอปถือไว้ใน state (กัน cache poisoning)
 - Worker ส่ง key ต่อให้ provider แล้วทิ้ง — ไม่บันทึก ไม่ log ไม่ผ่าน AI Gateway
 - Worker เรียกได้เฉพาะ base URL ที่ hardcode ของ 4 provider (ผู้ใช้กำหนด URL เองไม่ได้)
 
