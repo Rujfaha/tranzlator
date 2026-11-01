@@ -1,5 +1,5 @@
 import { cssInterop } from "nativewind";
-import { Pressable, type PressableProps } from "react-native";
+import { Pressable, type PressableProps, type StyleProp, type ViewStyle } from "react-native";
 import Animated, { ReduceMotion, useAnimatedStyle, useReducedMotion, useSharedValue, withTiming } from "react-native-reanimated";
 import { motion } from "./motion";
 
@@ -9,7 +9,9 @@ cssInterop(AnimatedPressable, { className: "style" });
 
 // Every tappable thing in the app goes through this: one press feel, one hover fade (web), one disabled look.
 // Hover colours are plain `hover:` classes in the caller's className (Tailwind must see the literal class).
-export function PressableScale({ disabled, onPressIn, onPressOut, className, ...props }: PressableProps & { className?: string }) {
+export function PressableScale({
+  disabled, onPressIn, onPressOut, className, style: base, ...props
+}: Omit<PressableProps, "style"> & { className?: string; style?: StyleProp<ViewStyle> }) {
   const reduceMotion = useReducedMotion();
   const pressed = useSharedValue(0);
   const style = useAnimatedStyle(() => ({
@@ -32,7 +34,7 @@ export function PressableScale({ disabled, onPressIn, onPressOut, className, ...
         onPressOut?.(e);
       }}
       className={`web:transition-colors web:duration-fast web:ease-standard ${className ?? ""}`}
-      style={style}
+      style={[base, style]}
     />
   );
 }

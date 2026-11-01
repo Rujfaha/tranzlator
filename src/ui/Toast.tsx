@@ -1,5 +1,5 @@
 import { createContext, type ReactNode, useContext, useMemo, useRef, useSyncExternalStore } from "react";
-import { Text, useWindowDimensions, View } from "react-native";
+import { KeyboardAvoidingView, Text, useWindowDimensions, View } from "react-native";
 import Animated, { FadeOut, ReduceMotion } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { CircleAlert, CircleCheck, Info, X } from "./icons";
@@ -37,22 +37,20 @@ const fadeOut = FadeOut.duration(motion.duration.exit).reduceMotion(ReduceMotion
 function Host({ toast, hide, pause, resume }: { toast: ToastItem | null; hide: () => void; pause: () => void; resume: () => void }) {
   const { width } = useWindowDimensions();
   const insets = useSafeAreaInsets();
-  // Wide: 24 above the bottom edge. Narrow: 12 above the BottomDock.
-  const bottom = isWide(width) ? 24 : DOCK_HEIGHT + insets.bottom + 12;
+  // Wide: 24 above the bottom edge. Narrow: 12 above the BottomDock (which the keyboard lifts, so lift the toast too).
+  const bottom = insets.bottom + (isWide(width) ? 24 : DOCK_HEIGHT + 12);
   return (
-    <View pointerEvents="box-none" style={{ bottom }} className="absolute inset-x-0 items-center px-4">
-      {toast && (
-        <Animated.View
-          key={toast.id}
-          exiting={fadeOut}
-          style={{ maxWidth: 480, width: "100%" }}
-        >
-          <Rise px={16}>
-            <ToastBody toast={toast} hide={hide} pause={pause} resume={resume} />
-          </Rise>
-        </Animated.View>
-      )}
-    </View>
+    <KeyboardAvoidingView behavior="padding" pointerEvents="box-none" className="absolute inset-0 justify-end">
+      <View pointerEvents="box-none" style={{ marginBottom: bottom }} className="items-center px-4">
+        {toast && (
+          <Animated.View key={toast.id} exiting={fadeOut} style={{ maxWidth: 480, width: "100%" }}>
+            <Rise px={16}>
+              <ToastBody toast={toast} hide={hide} pause={pause} resume={resume} />
+            </Rise>
+          </Animated.View>
+        )}
+      </View>
+    </KeyboardAvoidingView>
   );
 }
 

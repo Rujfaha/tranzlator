@@ -1,20 +1,24 @@
 import { type ComponentRef, useEffect, useRef, useState } from "react";
-import { KeyboardAvoidingView, ScrollView, Text, useWindowDimensions, View } from "react-native";
+import { Keyboard, KeyboardAvoidingView, Text, useWindowDimensions, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { addContext, type Lang, translate, type TranslateResponse } from "../api";
 import type { AiSettings } from "../providers";
 import { loadSettings, saveSettings } from "../settings";
+import { BottomDock } from "../ui/BottomDock";
 import { ContextDeck } from "../ui/ContextDeck";
 import { Header } from "../ui/Header";
 import { KeySuggestion } from "../ui/KeySuggestion";
 import { ChevronDown } from "../ui/icons";
 import { isWide } from "../ui/layout";
 import { LanguageMenu } from "../ui/LanguageMenu";
+import { LanguageSheet } from "../ui/LanguageSheet";
 import { LanguageTabs } from "../ui/LanguageTabs";
+import { MobileLayout } from "../ui/MobileLayout";
+import { PasteChip } from "../ui/PasteChip";
 import { PressableScale } from "../ui/PressableScale";
 import { SettingsSheet } from "../ui/SettingsSheet";
 import { SourcePane } from "../ui/SourcePane";
-import { LANG_LABEL, pushRecent } from "../ui/text";
+import { LANG_LABEL, pushRecent, sourceSize } from "../ui/text";
 import { useToast } from "../ui/Toast";
 import { WideLayout } from "../ui/WideLayout";
 
@@ -27,6 +31,7 @@ export default function Index() {
   const [target, setTarget] = useState<Lang>("en");
   const [recents, setRecents] = useState<Lang[]>(["en", "th", "ja"]); // the target tabs, most recent first
   const [menuOpen, setMenuOpen] = useState(false);
+  const [sheetOpen, setSheetOpen] = useState(false); // mobile language page
   const [anchor, setAnchor] = useState<{ x: number; y: number; width: number; height: number }>();
   const targetRow = useRef<ComponentRef<typeof View>>(null);
   const [ai, setAi] = useState<AiSettings | null>(null);
@@ -64,6 +69,7 @@ export default function Index() {
     }
     if (translating.current) return;
     translating.current = true;
+    Keyboard.dismiss();
     setLoading(true);
     setError(null);
     setData(null);
@@ -110,8 +116,8 @@ export default function Index() {
   );
   const source = (
     <SourcePane
-      variant="card"
-      size={compact ? "source-sm" : "source-md"}
+      variant={wide ? "card" : "bare"}
+      size={wide ? (compact ? "source-sm" : "source-md") : data ? "source-sm" : sourceSize(text.length)}
       compact={compact}
       value={text}
       onChange={setText}
@@ -120,6 +126,12 @@ export default function Index() {
       disabled={!ai}
     />
   );
+  const pickLang = (lang: Lang) => {
+    setRecents((r) => pushRecent(r, lang));
+    setTarget(lang);
+    setMenuOpen(false);
+    setSheetOpen(false);
+  };
   const tabs = {
     source: (
       <LanguageTabs
@@ -153,13 +165,8 @@ export default function Index() {
       </View>
     ),
   };
-  const results =
-    needsKey ? (
-      <View className="gap-3">
-        <KeySuggestion onShell onPress={() => setSettingsOpen(true)} />
-        <Text className="font-sans text-source-md text-disabled">คำแปลแต่ละบริบทจะแสดงที่นี่</Text>
-      </View>
-    ) : data || loading || error ? (
+  const deck =
+    data || loading || error ? (
       <ContextDeck
         results={data?.results ?? []}
         batch={batch}
@@ -171,39 +178,46 @@ export default function Index() {
         onAdd={add}
         adding={adding}
       />
-    ) : (
-      <Text className="font-sans text-source-md text-disabled">คำแปลแต่ละบริบทจะแสดงที่นี่</Text>
-    );
+    ) : null;
+  const placeholder = <Text className="font-sans text-source-md text-disabled">คำแปลแต่ละบริบทจะแสดงที่นี่</Text>;
+  const suggestion = needsKey ? <KeySuggestion onShell={wide} onPress={() => setSettingsOpen(true)} /> : null;
+  // Wide: one grey card holds hint + results (or the empty text). Mobile: the hint sits under the input, results follow.
+  const results = deck ?? placeholder;
 
   return (
-    <SafeAreaView className="flex-1 bg-paper">
-      <KeyboardAvoidingView behavior="height" className="flex-1">
+    <SafeAreaView edges={wide ? undefined : ["top", "left", "right"]} className="flex-1 bg-paper">
+      <KeyboardAvoidingView behavior={wide ? "height" : undefined} className="flex-1">
         {wide ? (
-          <WideLayout compact={compact} header={header} tabs={tabs} source={source} results={results} />
+          <WideLayout compact={compact} header={header} tabs={tabs} source={source} results={<>{suggestion}{results}</>} />
         ) : (
-          // Stopgap until the mobile layout: the same pieces, stacked.
-          <ScrollView keyboardShouldPersistTaps="handled" className="flex-1">
-            {header}
-            <View className="gap-3 px-4 pb-6">
-              {tabs.source}
-              {tabs.target}
-              {source}
-              <View className="gap-3 rounded-container bg-shell p-4">{results}</View>
-            </View>
-          </ScrollView>
+          <MobileLayout
+            header={header}
+            source={source}
+            paste={text.length === 0 ? <PasteChip onPaste={setText} /> : null}
+            suggestion={suggestion}
+            results={deck}
+            scrollKey={batch}
+            dock={
+              <BottomDock
+                detected={data ? (LANG_LABEL[data.sourceLang as Lang] ?? data.sourceLang) : undefined}
+                target={target}
+                onOpenLanguages={() => setSheetOpen(true)}
+                onTranslate={submit}
+                canTranslate={!!ai && text.trim().length > 0 && text.length <= 2000 && !loading}
+                loading={loading}
+              />
+            }
+          />
         )}
       </KeyboardAvoidingView>
       <LanguageMenu
         open={menuOpen}
         anchor={anchor}
         selected={target}
-        onSelect={(lang) => {
-          setRecents((r) => pushRecent(r, lang));
-          setTarget(lang);
-          setMenuOpen(false);
-        }}
+        onSelect={pickLang}
         onClose={() => setMenuOpen(false)}
       />
+      <LanguageSheet open={sheetOpen} recents={recents} selected={target} onSelect={pickLang} onClose={() => setSheetOpen(false)} />
       <SettingsSheet
         open={settingsOpen}
         initial={ai}
