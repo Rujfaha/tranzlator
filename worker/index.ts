@@ -1,7 +1,7 @@
 import {
   AiAuthError, AiQuotaError, askModel, contextPrompt, parseContext, parseTranslate, translatePrompt,
 } from "./ai";
-import { addResult, getSource, getTranslation, saveTranslation, translationId } from "./db";
+import { getSource, getTranslation, saveTranslation, translationId } from "./db";
 import type { AiConfig, AskModel, Env } from "./env";
 import { validateAi, validateContext, validateTranslate } from "./validate";
 
@@ -61,9 +61,8 @@ export function createHandler(ask: AskModel): ExportedHandler<Env> {
     } catch (e) {
       return aiFailure(e);
     }
-    const result = { context: input.context, ...parsed, custom: true };
-    await addResult(env.DB, id, result);
-    return json(result);
+    // Not stored: the cache is shared, so a custom card must reach only its requester.
+    return json({ context: input.context, ...parsed, custom: true });
   }
 
   return {

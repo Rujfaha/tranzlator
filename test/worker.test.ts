@@ -192,7 +192,7 @@ it("400 for empty context / > 200 chars", async () => {
   expect((await post(`/api/translate/${id}/contexts`, { context: "   " })).status).toBe(400);
   expect((await post(`/api/translate/${id}/contexts`, { context: "ก".repeat(201) })).status).toBe(400);
 });
-it("appends custom result; later translate cache hit includes it last", async () => {
+it("returns the custom result to the requester only", async () => {
   ask = good;
   const id = await translated("ขอบคุณ");
   ask = customReply;
@@ -201,10 +201,25 @@ it("appends custom result; later translate cache hit includes it last", async ()
   expect(await json(r)).toEqual({
     context: "ขอบคุณหัวหน้าคนญี่ปุ่น", text: "ありがとうございます", note: "ใช้กับหัวหน้า", custom: true,
   });
+});
+it("custom result is not returned by a later translate cache hit", async () => {
+  ask = good;
+  const id = await translated("ขอบคุณมากครับ");
+  ask = customReply;
+  await post(`/api/translate/${id}/contexts`, { context: "ขอบคุณหัวหน้าคนญี่ปุ่น" });
   ask = refuse;
-  const again = await json(await post("/api/translate", { text: "ขอบคุณ", target: "ja" }));
-  expect(again.results).toHaveLength(4);
-  expect(again.results.at(-1)).toMatchObject({ context: "ขอบคุณหัวหน้าคนญี่ปุ่น", custom: true });
+  const again = await json(await post("/api/translate", { text: "ขอบคุณมากครับ", target: "ja" }));
+  expect(again.results).toHaveLength(3);
+  expect(again.results.every((r: { custom: boolean }) => r.custom === false)).toBe(true);
+  expect(await rows(`SELECT count(*) n FROM results WHERE translation_id = '${id}'`)).toBe(3);
+});
+it("getTranslation ignores custom rows and returns at most 6 results", async () => {
+  const many = Array.from({ length: 8 }, (_, i) => ({ context: `c${i}`, text: "t", note: "n", custom: false }));
+  await saveTranslation(env.DB, "many-id", "x", "th", "en", many);
+  await env.DB.prepare("INSERT INTO results (translation_id, context, text, note, is_custom, created_at) VALUES ('many-id','x','t','n',1,0)").run();
+  const got = (await getTranslation(env.DB, "many-id"))!.results;
+  expect(got).toHaveLength(6);
+  expect(got.every((r) => !r.custom)).toBe(true);
 });
 it("contexts endpoint maps AI errors like translate and needs AI headers", async () => {
   ask = good;
