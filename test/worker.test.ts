@@ -174,3 +174,48 @@ it("saving the same translation twice does not duplicate results", async () => {
   await saveTranslation(env.DB, "dup-id", "x", "th", "en", results);
   expect((await getTranslation(env.DB, "dup-id"))!.results).toHaveLength(1);
 });
+
+// --- Task 4: POST /api/translate/:id/contexts ---
+const customReply: AskModel = async () => '{"text":"ありがとうございます","note":"ใช้กับหัวหน้า"}';
+const translated = async (text: string, target = "ja") =>
+  (await json<{ id: string }>(await post("/api/translate", { text, target }))).id;
+
+it("404 for unknown id", async () => {
+  ask = customReply;
+  const res = await post("/api/translate/nope/contexts", { context: "ทางการ" });
+  expect(res.status).toBe(404);
+  expect(calls).toBe(0);
+});
+it("400 for empty context / > 200 chars", async () => {
+  ask = good;
+  const id = await translated("ขอบคุณครับ");
+  expect((await post(`/api/translate/${id}/contexts`, { context: "   " })).status).toBe(400);
+  expect((await post(`/api/translate/${id}/contexts`, { context: "ก".repeat(201) })).status).toBe(400);
+});
+it("appends custom result; later translate cache hit includes it last", async () => {
+  ask = good;
+  const id = await translated("ขอบคุณ");
+  ask = customReply;
+  const r = await post(`/api/translate/${id}/contexts`, { context: "  ขอบคุณหัวหน้าคนญี่ปุ่น " });
+  expect(r.status).toBe(200);
+  expect(await json(r)).toEqual({
+    context: "ขอบคุณหัวหน้าคนญี่ปุ่น", text: "ありがとうございます", note: "ใช้กับหัวหน้า", custom: true,
+  });
+  ask = refuse;
+  const again = await json(await post("/api/translate", { text: "ขอบคุณ", target: "ja" }));
+  expect(again.results).toHaveLength(4);
+  expect(again.results.at(-1)).toMatchObject({ context: "ขอบคุณหัวหน้าคนญี่ปุ่น", custom: true });
+});
+it("contexts endpoint maps AI errors like translate and needs AI headers", async () => {
+  ask = good;
+  const id = await translated("ลาก่อน");
+  ask = async () => {
+    throw new AiAuthError("rejected test-key");
+  };
+  expect((await post(`/api/translate/${id}/contexts`, { context: "ทางการ" })).status).toBe(401);
+  ask = async () => "not json";
+  expect((await post(`/api/translate/${id}/contexts`, { context: "ทางการ" })).status).toBe(502);
+  expect((await post(`/api/translate/${id}/contexts`, { context: "ทางการ" }, {})).status).toBe(400);
+  rateOk = false;
+  expect((await post(`/api/translate/${id}/contexts`, { context: "ทางการ" })).status).toBe(429);
+});

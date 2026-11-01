@@ -42,3 +42,18 @@ export async function saveTranslation(
     ),
   ]);
 }
+
+export async function getSource(db: D1Database, id: string): Promise<{ text: string; target: Lang } | null> {
+  const row = await db
+    .prepare("SELECT source_text, target_lang FROM translations WHERE id = ?")
+    .bind(id)
+    .first<{ source_text: string; target_lang: Lang }>();
+  return row && { text: row.source_text, target: row.target_lang };
+}
+
+export async function addResult(db: D1Database, translationId: string, r: Result): Promise<void> {
+  await db
+    .prepare("INSERT INTO results (translation_id, context, text, note, is_custom, created_at) VALUES (?, ?, ?, ?, ?, ?)")
+    .bind(translationId, r.context, r.text, r.note, r.custom ? 1 : 0, Date.now())
+    .run();
+}
