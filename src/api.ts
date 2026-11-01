@@ -10,6 +10,15 @@ const BASE = process.env.EXPO_PUBLIC_API_URL ?? ""; // empty on web: same-origin
 const NETWORK_ERROR = "เชื่อมต่อไม่ได้ ตรวจอินเทอร์เน็ตแล้วลองใหม่";
 const FAILED = "แปลไม่สำเร็จ กดแปลอีกครั้ง";
 
+// A non-2xx response. `status` lets the UI offer "open settings" on 401; network errors are plain Errors without it.
+export class ApiError extends Error {
+  status: number;
+  constructor(message: string, status: number) {
+    super(message);
+    this.status = status;
+  }
+}
+
 async function post<T>(path: string, ai: AiSettings, body: unknown): Promise<T> {
   let res: Response;
   try {
@@ -27,7 +36,7 @@ async function post<T>(path: string, ai: AiSettings, body: unknown): Promise<T> 
     throw new Error(NETWORK_ERROR);
   }
   const data = (await res.json().catch(() => null)) as { error?: unknown } | null;
-  if (!res.ok) throw new Error(typeof data?.error === "string" ? data.error : FAILED);
+  if (!res.ok) throw new ApiError(typeof data?.error === "string" ? data.error : FAILED, res.status);
   return data as T;
 }
 

@@ -28,3 +28,11 @@ it("throws the 502 message when the error response has no JSON body", async () =
   vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response("<html>oops</html>", { status: 500 }));
   await expect(translate(ai, "x", "en")).rejects.toThrow("แปลไม่สำเร็จ กดแปลอีกครั้ง");
 });
+it("401 error carries status 401", async () => {
+  vi.spyOn(globalThis, "fetch").mockResolvedValue(Response.json({ error: "API key ไม่ถูกต้อง ตรวจ key ในหน้าตั้งค่า" }, { status: 401 }));
+  await expect(translate(ai, "x", "en")).rejects.toMatchObject({ status: 401, message: "API key ไม่ถูกต้อง ตรวจ key ในหน้าตั้งค่า" });
+});
+it("network error has no status", async () => {
+  vi.spyOn(globalThis, "fetch").mockRejectedValue(new TypeError("Failed to fetch"));
+  await expect(translate(ai, "x", "en")).rejects.not.toHaveProperty("status");
+});

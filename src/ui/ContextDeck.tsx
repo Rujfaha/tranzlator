@@ -1,11 +1,13 @@
 import { useEffect } from "react";
-import { Pressable, Text, View } from "react-native";
+import { View } from "react-native";
 import Animated, {
   useAnimatedStyle, useReducedMotion, useSharedValue, withRepeat, withTiming,
 } from "react-native-reanimated";
 import type { Result } from "../api";
 import { AddContextCard } from "./AddContextCard";
 import { ContextCard } from "./ContextCard";
+import { InlineError } from "./InlineError";
+import { motion } from "./motion";
 
 type Props = {
   results: Result[];
@@ -15,32 +17,22 @@ type Props = {
   selected: number | null;
   onSelect: (index: number) => void;
   onRetry: () => void;
-  onAdd: (context: string) => Promise<void>;
+  onSettings?: () => void; // offered next to the error when the key was rejected
+  onAdd: (context: string) => void;
   adding: boolean;
+  draft: string; // text of the add-context field, owned by the page
+  onDraft: (value: string) => void;
 };
 
-export function ContextDeck({ results, batch, loading, error, selected, onSelect, onRetry, onAdd, adding }: Props) {
+export function ContextDeck({ results, batch, loading, error, selected, onSelect, onRetry, onSettings, onAdd, adding, draft, onDraft }: Props) {
   if (loading) return <Skeleton />;
-  if (error) {
-    return (
-      <View className="items-start gap-3">
-        <Text accessibilityRole="alert" className="font-sans text-body text-danger">{error}</Text>
-        <Pressable
-          accessibilityRole="button"
-          onPress={onRetry}
-          className="min-h-11 items-center justify-center rounded-full bg-graphite px-6 active:opacity-80"
-        >
-          <Text className="font-sans-semibold text-body text-paper">ลองอีกครั้ง</Text>
-        </Pressable>
-      </View>
-    );
-  }
+  if (error) return <InlineError message={error} onRetry={onRetry} onSettings={onSettings} />;
   return (
     <View className="gap-3">
       {results.map((r, i) => (
         <ContextCard key={`${batch}-${i}`} result={r} index={i} selected={selected === i} onSelect={() => onSelect(i)} />
       ))}
-      <AddContextCard onSubmit={onAdd} loading={adding} />
+      <AddContextCard value={draft} onChange={onDraft} onSubmit={onAdd} loading={adding} />
     </View>
   );
 }
@@ -50,7 +42,7 @@ function Skeleton() {
   const reduceMotion = useReducedMotion();
   const breath = useSharedValue(1);
   useEffect(() => {
-    if (!reduceMotion) breath.value = withRepeat(withTiming(0.4, { duration: 1200 }), -1, true);
+    if (!reduceMotion) breath.value = withRepeat(withTiming(0.4, { duration: motion.duration.dots }), -1, true);
   }, [breath, reduceMotion]);
   const style = useAnimatedStyle(() => ({ opacity: breath.value }));
   return (

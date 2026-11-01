@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Text, TextInput, View } from "react-native";
 import Animated, { FadeIn, FadeOut, ReduceMotion } from "react-native-reanimated";
 import { X } from "./icons";
+import { LoadingDots } from "./LoadingDots";
 import { motion } from "./motion";
 import { PressableScale } from "./PressableScale";
 import { MAX_SOURCE, type sourceSize } from "./text";
@@ -25,7 +26,8 @@ type Props = {
 export function SourcePane({ value, onChange, onSubmit, loading, disabled, variant, size, compact }: Props) {
   const over = value.length > MAX_SOURCE;
   const ready = value.trim().length > 0 && !over && !loading;
-  const canSubmit = ready && !disabled;
+  // While loading the button keeps its normal look (dots inside) and presses do nothing: submit is single-flight.
+  const canPress = value.trim().length > 0 && !over && !disabled;
   const card = variant === "card";
   const [focused, setFocused] = useState(false); // the card border stands in for the focus ring around the whole box
   const counter = (
@@ -72,12 +74,14 @@ export function SourcePane({ value, onChange, onSubmit, loading, disabled, varia
           <View className="flex-1">{counter}</View>
           <PressableScale
             accessibilityRole="button"
-            accessibilityState={{ disabled: !canSubmit }}
-            disabled={!canSubmit}
+            accessibilityState={{ disabled: !canPress, busy: loading }}
+            disabled={!canPress}
             onPress={onSubmit}
             className="min-h-11 items-center justify-center rounded-full bg-graphite px-6 hover:bg-ink"
           >
-            <Text className="font-sans-semibold text-body text-paper">แปล</Text>
+            <LoadingDots loading={loading}>
+              <Text className="font-sans-semibold text-body text-paper">แปล</Text>
+            </LoadingDots>
           </PressableScale>
         </View>
       ) : (

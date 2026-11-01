@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import {
-  KeyboardAvoidingView, Linking, Modal, Platform, Pressable, ScrollView, Text, TextInput, useWindowDimensions, View,
+  KeyboardAvoidingView, Linking, Modal, Platform, ScrollView, Text, TextInput, useWindowDimensions, View,
 } from "react-native";
 import Animated, {
   ReduceMotion, useAnimatedStyle, useReducedMotion, useSharedValue, withTiming,
@@ -9,6 +9,7 @@ import { type AiSettings, PROVIDER_INFO, type Provider } from "../providers";
 import { Check, ChevronDown, X } from "./icons";
 import { isWide } from "./layout";
 import { motion } from "./motion";
+import { PressableScale } from "./PressableScale";
 
 type Props = {
   open: boolean;
@@ -20,15 +21,26 @@ type Props = {
 const PROVIDERS = Object.keys(PROVIDER_INFO) as Provider[];
 
 export function SettingsSheet({ open, initial, onClose, onSave }: Props) {
-  // The form mounts only while open, so it re-initialises from `initial` on every open.
+  const reduceMotion = useReducedMotion();
+  const [mounted, setMounted] = useState(open);
+  useEffect(() => {
+    // Stay mounted until the exit animation has played.
+    if (open) {
+      setMounted(true);
+      return;
+    }
+    const t = setTimeout(() => setMounted(false), reduceMotion ? motion.duration.fast : motion.duration.exit);
+    return () => clearTimeout(t);
+  }, [open, reduceMotion]);
+  // The form mounts only while shown, so it re-initialises from `initial` on every open.
   return (
-    <Modal visible={open} transparent animationType="none" onRequestClose={onClose}>
-      {open && <Form initial={initial} onClose={onClose} onSave={onSave} />}
+    <Modal visible={mounted} transparent animationType="none" onRequestClose={onClose}>
+      {mounted && <Form open={open} initial={initial} onClose={onClose} onSave={onSave} />}
     </Modal>
   );
 }
 
-function Form({ initial, onClose, onSave }: Omit<Props, "open">) {
+function Form({ open, initial, onClose, onSave }: Props) {
   const { width, height } = useWindowDimensions();
   const wide = isWide(width);
   const reduceMotion = useReducedMotion();
@@ -38,26 +50,37 @@ function Form({ initial, onClose, onSave }: Omit<Props, "open">) {
   const [showKey, setShowKey] = useState(false);
   const [listOpen, setListOpen] = useState(false);
 
-  // Narrow: bottom sheet slides up. Wide dialog and reduced motion: fade only.
+  // In 300ms / out 200ms. Narrow: the bottom sheet slides. Wide dialog: fade + rise 16 + scale .95 -> 1. Reduced motion: fade only.
   const progress = useSharedValue(0);
   useEffect(() => {
-    progress.value = withTiming(1, {
-      duration: reduceMotion ? motion.duration.fast : motion.duration.sheet,
+    progress.value = withTiming(open ? 1 : 0, {
+      duration: reduceMotion ? motion.duration.fast : open ? motion.duration.sheet : motion.duration.exit,
       easing: motion.ease.standard,
       reduceMotion: ReduceMotion.Never, // we handle reduced motion ourselves: fade only
     });
-  }, [progress, reduceMotion]);
-  const animated = useAnimatedStyle(() => ({
-    opacity: progress.value,
-    transform: [{ translateY: wide || reduceMotion ? 0 : (1 - progress.value) * height }],
-  }));
+  }, [open, progress, reduceMotion]);
+  const backdrop = useAnimatedStyle(() => ({ opacity: progress.value }));
+  const animated = useAnimatedStyle(() => {
+    const away = 1 - progress.value;
+    return {
+      opacity: progress.value,
+      transform: reduceMotion
+        ? []
+        : wide
+          ? [{ translateY: away * 16 }, { scale: 0.95 + 0.05 * progress.value }]
+          : [{ translateY: away * height }],
+    };
+  });
 
   const info = PROVIDER_INFO[provider];
   const canSave = key.trim().length > 0 && model.trim().length > 0;
 
   return (
-    <View className={`flex-1 bg-ink/40 ${wide ? "items-center justify-center p-3" : "justify-end"}`}>
-      <Pressable accessibilityLabel="ปิด" onPress={onClose} className="absolute inset-0" />
+    <View className={`flex-1 ${wide ? "items-center justify-center p-3" : "justify-end"}`}>
+      <Animated.View pointerEvents="none" style={[{ position: "absolute", top: 0, right: 0, bottom: 0, left: 0 }, backdrop]}>
+        <View className="flex-1 bg-ink/40" />
+      </Animated.View>
+      <PressableScale accessibilityLabel="ปิด" onPress={onClose} className="absolute inset-0" />
       <KeyboardAvoidingView behavior="height" className={wide ? "w-full max-w-md" : "w-full"}>
         {/* className is not applied to Animated.* on web, so the animated wrapper only animates. */}
         <Animated.View style={animated}>
@@ -65,27 +88,27 @@ function Form({ initial, onClose, onSave }: Omit<Props, "open">) {
           <ScrollView keyboardShouldPersistTaps="handled" contentContainerClassName="gap-4 p-4">
             <View className="flex-row items-center">
               <Text accessibilityRole="header" className="flex-1 font-sans-semibold text-translation text-ink">ตั้งค่า AI</Text>
-              <Pressable accessibilityRole="button" accessibilityLabel="ปิด" onPress={onClose} className="h-11 w-11 items-center justify-center rounded-full active:opacity-70">
+              <PressableScale accessibilityRole="button" accessibilityLabel="ปิด" onPress={onClose} className="h-11 w-11 items-center justify-center rounded-full hover:bg-chip">
                 <X size={22} className="text-ink" />
-              </Pressable>
+              </PressableScale>
             </View>
 
             <View className="gap-1.5">
               <Text className="font-sans-medium text-note text-muted">ผู้ให้บริการ</Text>
-              <Pressable
+              <PressableScale
                 accessibilityRole="button"
                 accessibilityLabel={`ผู้ให้บริการ ${info.label}`}
                 accessibilityState={{ expanded: listOpen }}
                 onPress={() => setListOpen(!listOpen)}
-                className="min-h-11 flex-row items-center rounded-element border border-line px-3 active:opacity-80"
+                className="min-h-11 flex-row items-center rounded-element border border-line px-3 hover:bg-chip"
               >
                 <Text className="flex-1 font-sans text-body text-ink">{info.label}</Text>
                 <ChevronDown size={18} className="text-muted" />
-              </Pressable>
+              </PressableScale>
               {listOpen && (
                 <View className="overflow-hidden rounded-element border border-line">
                   {PROVIDERS.map((p) => (
-                    <Pressable
+                    <PressableScale
                       key={p}
                       accessibilityRole="button"
                       accessibilityState={{ selected: p === provider }}
@@ -94,11 +117,11 @@ function Form({ initial, onClose, onSave }: Omit<Props, "open">) {
                         setModel(PROVIDER_INFO[p].defaultModel);
                         setListOpen(false);
                       }}
-                      className="min-h-11 flex-row items-center px-3 active:bg-chip"
+                      className="min-h-11 flex-row items-center px-3 hover:bg-chip"
                     >
                       <Text className="flex-1 font-sans text-body text-ink">{PROVIDER_INFO[p].label}</Text>
                       {p === provider && <Check size={18} className="text-ink" />}
-                    </Pressable>
+                    </PressableScale>
                   ))}
                 </View>
               )}
@@ -117,9 +140,9 @@ function Form({ initial, onClose, onSave }: Omit<Props, "open">) {
                   accessibilityLabel="API key"
                   className="min-h-11 flex-1 font-sans text-body text-ink"
                 />
-                <Pressable accessibilityRole="button" onPress={() => setShowKey(!showKey)} className="min-h-11 justify-center px-3 active:opacity-70">
+                <PressableScale accessibilityRole="button" onPress={() => setShowKey(!showKey)} className="min-h-11 justify-center rounded-element px-3">
                   <Text className="font-sans-medium text-body text-ink">{showKey ? "ซ่อน" : "แสดง"}</Text>
-                </Pressable>
+                </PressableScale>
               </View>
             </View>
 
@@ -137,23 +160,23 @@ function Form({ initial, onClose, onSave }: Omit<Props, "open">) {
             </View>
 
             <View className="gap-1.5">
-              <Pressable accessibilityRole="link" onPress={() => Linking.openURL(info.keyUrl)} className="min-h-11 justify-center">
+              <PressableScale accessibilityRole="link" onPress={() => Linking.openURL(info.keyUrl)} className="min-h-11 justify-center">
                 <Text className="font-sans text-body text-ink underline">ขอ API key ได้ที่ {info.keyUrl.split("/")[2]}</Text>
-              </Pressable>
+              </PressableScale>
               <Text className="font-sans text-note text-muted">
                 {Platform.OS === "web" ? "key เก็บในเบราว์เซอร์นี้เท่านั้น" : "key เก็บในเครื่องนี้เท่านั้น"}
               </Text>
             </View>
 
-            <Pressable
+            <PressableScale
               accessibilityRole="button"
               accessibilityState={{ disabled: !canSave }}
               disabled={!canSave}
               onPress={() => onSave({ provider, key: key.trim(), model: model.trim() })}
-              className={`min-h-11 items-center justify-center self-end rounded-full px-6 ${canSave ? "bg-graphite active:opacity-80" : "bg-disabled"}`}
+              className="min-h-11 items-center justify-center self-end rounded-full bg-graphite px-6 hover:bg-ink"
             >
               <Text className="font-sans-semibold text-body text-paper">บันทึก</Text>
-            </Pressable>
+            </PressableScale>
           </ScrollView>
           </View>
         </Animated.View>

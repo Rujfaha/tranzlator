@@ -1,7 +1,7 @@
 import { type ComponentRef, useEffect, useRef, useState } from "react";
 import { Keyboard, KeyboardAvoidingView, Text, useWindowDimensions, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { addContext, type Lang, translate, type TranslateResponse } from "../api";
+import { addContext, ApiError, type Lang, translate, type TranslateResponse } from "../api";
 import type { AiSettings } from "../providers";
 import { loadSettings, saveSettings } from "../settings";
 import { BottomDock } from "../ui/BottomDock";
@@ -37,13 +37,13 @@ export default function Index() {
   const [ai, setAi] = useState<AiSettings | null>(null);
   const [settingsLoaded, setSettingsLoaded] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [saved, setSaved] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<{ message: string; status?: number } | null>(null);
   const [data, setData] = useState<TranslateResponse | null>(null);
   const [batch, setBatch] = useState(0);
   const [selected, setSelected] = useState<number | null>(null);
   const [adding, setAdding] = useState(false);
+  const [draft, setDraft] = useState(""); // add-context field
   // State lags a render behind, so rapid repeats (double click, held Ctrl+Enter) need a ref to stay single-flight.
   const translating = useRef(false);
   const addingNow = useRef(false);
@@ -54,11 +54,6 @@ export default function Index() {
       setSettingsLoaded(true);
     });
   }, []);
-  useEffect(() => {
-    if (!saved) return;
-    const t = setTimeout(() => setSaved(false), 1500);
-    return () => clearTimeout(t);
-  }, [saved]);
 
   async function submit() {
     if (!ai) {
@@ -70,6 +65,7 @@ export default function Index() {
     if (translating.current) return;
     translating.current = true;
     Keyboard.dismiss();
+    setDraft("");
     setLoading(true);
     setError(null);
     setData(null);
@@ -78,7 +74,7 @@ export default function Index() {
       setData(await translate(ai, text.trim(), target));
       setBatch((b) => b + 1);
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      setError({ message: e instanceof Error ? e.message : String(e), status: e instanceof ApiError ? e.status : undefined });
     } finally {
       translating.current = false;
       setLoading(false);
@@ -93,6 +89,13 @@ export default function Index() {
     try {
       const result = await addContext(ai, data.id, context);
       setData((d) => d && { ...d, results: [...d.results, result] });
+      setDraft((d) => (d.trim() === context ? "" : d));
+    } catch (e) {
+      toast.show({
+        kind: "error",
+        message: e instanceof Error ? e.message : String(e),
+        action: { label: "ลองอีกครั้ง", onPress: () => void add(context) },
+      });
     } finally {
       addingNow.current = false;
       setAdding(false);
@@ -107,6 +110,7 @@ export default function Index() {
       needsKey={needsKey}
       onHome={() => {
         setText("");
+        setDraft("");
         setData(null);
         setError(null);
         setSelected(null);
@@ -171,12 +175,15 @@ export default function Index() {
         results={data?.results ?? []}
         batch={batch}
         loading={loading}
-        error={error}
+        error={error?.message ?? null}
         selected={selected}
         onSelect={setSelected}
         onRetry={submit}
+        onSettings={error?.status === 401 ? () => setSettingsOpen(true) : undefined}
         onAdd={add}
         adding={adding}
+        draft={draft}
+        onDraft={setDraft}
       />
     ) : null;
   const placeholder = <Text className="font-sans text-source-md text-disabled">คำแปลแต่ละบริบทจะแสดงที่นี่</Text>;
@@ -203,7 +210,7 @@ export default function Index() {
                 target={target}
                 onOpenLanguages={() => setSheetOpen(true)}
                 onTranslate={submit}
-                canTranslate={!!ai && text.trim().length > 0 && text.length <= 2000 && !loading}
+                canTranslate={!!ai && text.trim().length > 0 && text.length <= 2000}
                 loading={loading}
               />
             }
@@ -225,17 +232,10 @@ export default function Index() {
         onSave={(s) => {
           setAi(s);
           setSettingsOpen(false);
-          setSaved(true);
+          toast.show({ kind: "success", message: "บันทึกแล้ว" });
           saveSettings(s);
         }}
       />
-      {saved && (
-        <View pointerEvents="none" className="absolute inset-x-0 bottom-6 items-center">
-          <View className="rounded-full bg-graphite px-4 py-3">
-            <Text accessibilityLiveRegion="polite" className="font-sans-medium text-body text-paper">บันทึกแล้ว</Text>
-          </View>
-        </View>
-      )}
     </SafeAreaView>
   );
 }

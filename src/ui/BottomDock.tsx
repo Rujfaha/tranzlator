@@ -2,6 +2,7 @@ import { Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import type { Lang } from "../api";
 import { ArrowRight, ChevronDown } from "./icons";
+import { LoadingDots } from "./LoadingDots";
 import { PressableScale } from "./PressableScale";
 import { LANG_LABEL } from "./text";
 
@@ -10,7 +11,7 @@ type Props = {
   target: Lang;
   onOpenLanguages: () => void;
   onTranslate: () => void;
-  canTranslate: boolean;
+  canTranslate: boolean; // ignores `loading`: while loading the button keeps its look and presses do nothing
   loading: boolean;
 };
 
@@ -43,7 +44,9 @@ export function BottomDock({ detected, target, onOpenLanguages, onTranslate, can
         style={{ height: 52 }}
         className="items-center justify-center rounded-full bg-graphite hover:bg-ink"
       >
-        <Text className="font-sans-semibold text-input text-paper">แปล</Text>
+        <LoadingDots loading={loading}>
+          <Text className="font-sans-semibold text-input text-paper">แปล</Text>
+        </LoadingDots>
       </PressableScale>
     </View>
   );
