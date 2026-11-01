@@ -43,7 +43,10 @@
     "web": "expo start --web",
     "lint": "expo lint",
     "test": "vitest run",
-    "typecheck": "tsc --noEmit && tsc -p tsconfig.worker.json"
+    "typecheck": "tsc --noEmit && tsc -p tsconfig.worker.json",
+    "build:web": "expo export -p web",
+    "deploy": "npm run build:web && wrangler deploy",
+    "db:migrate": "wrangler d1 migrations apply tranzlator --remote"
   },
   "private": true
 }
