@@ -229,7 +229,7 @@ export default function Index() {
   const results = deck ?? placeholder;
 
   return (
-    <SafeAreaView edges={wide ? undefined : ["top", "left", "right"]} className="flex-1 bg-paper">
+    <SafeAreaView edges={wide ? undefined : ["left", "right"]} className={wide ? "flex-1 bg-paper" : "flex-1 bg-shell"}>
       <KeyboardAvoidingView behavior={wide ? "height" : undefined} className="flex-1">
         {wide ? (
           <WideLayout compact={compact} header={header} tabs={tabs} source={source} results={results} onScroll={measureIcon} />

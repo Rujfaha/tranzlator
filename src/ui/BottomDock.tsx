@@ -19,9 +19,9 @@ type Props = {
 export function BottomDock({ detected, target, onOpenLanguages, onTranslate, canTranslate, loading }: Props) {
   const insets = useSafeAreaInsets();
   return (
-    <View style={{ paddingBottom: insets.bottom + 12 }} className="gap-2 border-t border-line bg-paper px-4 pt-3">
+    <View style={{ paddingBottom: insets.bottom + 12 }} className="gap-2 px-4 pt-3">
       <View className="h-12 flex-row items-center gap-3">
-        <View className="h-12 flex-1 items-center justify-center rounded-container bg-chip">
+        <View className="h-12 flex-1 items-center justify-center rounded-container bg-paper">
           <Text numberOfLines={1} className="font-sans-medium text-body text-muted">{detected ?? "ตรวจหาภาษา"}</Text>
         </View>
         <ArrowRight size={20} className="text-muted" />
@@ -29,7 +29,7 @@ export function BottomDock({ detected, target, onOpenLanguages, onTranslate, can
           accessibilityRole="button"
           accessibilityLabel={`ภาษาปลายทาง ${langName(target)}`}
           onPress={onOpenLanguages}
-          className="h-12 flex-1 flex-row items-center justify-center gap-1 rounded-container bg-chip hover:bg-line"
+          className="h-12 flex-1 flex-row items-center justify-center gap-1 rounded-container bg-paper hover:bg-chip"
         >
           <Text numberOfLines={1} className="font-sans-medium text-body text-ink">{langName(target)}</Text>
           <ChevronDown size={18} className="text-ink" />

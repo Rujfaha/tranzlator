@@ -17,7 +17,7 @@ module.exports = {
         paper: "#FFFFFF",
         danger: "#E33F4A",
       },
-      borderRadius: { inner: "6px", element: "12px", container: "16px", panel: "20px" },
+      borderRadius: { inner: "6px", element: "12px", container: "16px", panel: "20px", sheet: "32px" },
       // Anuphan ships one file per weight, so the weight lives in the family name.
       // Keys are not `medium`/`semibold`: those would also match Tailwind's font-weight utilities.
       fontFamily: {
