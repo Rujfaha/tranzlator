@@ -1,11 +1,12 @@
 import { createContext, type ReactNode, useContext, useMemo, useRef, useSyncExternalStore } from "react";
 import { Text, useWindowDimensions, View } from "react-native";
-import Animated, { FadeIn, FadeOut, Keyframe, ReduceMotion, useReducedMotion } from "react-native-reanimated";
+import Animated, { FadeOut, ReduceMotion } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { CircleAlert, CircleCheck, Info, X } from "./icons";
 import { DOCK_HEIGHT, isWide } from "./layout";
 import { motion } from "./motion";
 import { PressableScale } from "./PressableScale";
+import { Rise } from "./Rise";
 import { createToastStore, type ToastInput, type ToastItem } from "./toastStore";
 
 type Api = { show: (t: ToastInput) => void; hide: () => void };
@@ -30,22 +31,10 @@ export function ToastProvider({ children }: { children: ReactNode }) {
 }
 
 const ICON = { success: CircleCheck, error: CircleAlert, info: Info };
-const SLIDE = 16;
-const toastIn = new Keyframe({
-  0: { opacity: 0, transform: [{ translateY: SLIDE }] },
-  100: { opacity: 1, transform: [{ translateY: 0 }], easing: motion.ease.standard },
-}).duration(motion.duration.sheet);
-const toastOut = new Keyframe({
-  0: { opacity: 1, transform: [{ translateY: 0 }] },
-  100: { opacity: 0, transform: [{ translateY: SLIDE / 2 }], easing: motion.ease.standard },
-}).duration(motion.duration.exit);
-
-// Reduced motion: fade only. Reanimated would otherwise skip even the fade.
-const fadeIn = FadeIn.duration(motion.duration.fast).reduceMotion(ReduceMotion.Never);
-const fadeOut = FadeOut.duration(motion.duration.fast).reduceMotion(ReduceMotion.Never);
+// Enter is <Rise>; exit is a plain fade (a built-in animation, so web does not pin the element absolute). ReduceMotion.Never: Reanimated would otherwise skip the fade.
+const fadeOut = FadeOut.duration(motion.duration.exit).reduceMotion(ReduceMotion.Never);
 
 function Host({ toast, hide, pause, resume }: { toast: ToastItem | null; hide: () => void; pause: () => void; resume: () => void }) {
-  const reduceMotion = useReducedMotion();
   const { width } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   // Wide: 24 above the bottom edge. Narrow: 12 above the BottomDock.
@@ -55,11 +44,12 @@ function Host({ toast, hide, pause, resume }: { toast: ToastItem | null; hide: (
       {toast && (
         <Animated.View
           key={toast.id}
-          entering={reduceMotion ? fadeIn : toastIn.reduceMotion(ReduceMotion.Never)}
-          exiting={reduceMotion ? fadeOut : toastOut.reduceMotion(ReduceMotion.Never)}
+          exiting={fadeOut}
           style={{ maxWidth: 480, width: "100%" }}
         >
-          <ToastBody toast={toast} hide={hide} pause={pause} resume={resume} />
+          <Rise px={16}>
+            <ToastBody toast={toast} hide={hide} pause={pause} resume={resume} />
+          </Rise>
         </Animated.View>
       )}
     </View>

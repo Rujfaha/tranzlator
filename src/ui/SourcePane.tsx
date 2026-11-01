@@ -13,7 +13,8 @@ type Props = {
 
 export function SourcePane({ value, onChange, onSubmit, loading, disabled }: Props) {
   const over = value.length > MAX;
-  const canSubmit = value.trim().length > 0 && !over && !loading && !disabled;
+  const ready = value.trim().length > 0 && !over && !loading;
+  const canSubmit = ready && !disabled;
   return (
     <View className="wide:flex-1">
       <TextInput
@@ -22,7 +23,7 @@ export function SourcePane({ value, onChange, onSubmit, loading, disabled }: Pro
         onChangeText={onChange}
         onKeyPress={(e) => {
           const k = e.nativeEvent as unknown as { key: string; ctrlKey?: boolean; metaKey?: boolean };
-          if (k.key === "Enter" && (k.ctrlKey || k.metaKey) && canSubmit) onSubmit();
+          if (k.key === "Enter" && (k.ctrlKey || k.metaKey) && ready) onSubmit(); // without a key the page explains why (toast)
         }}
         accessibilityLabel="ข้อความที่ต้องการแปล"
         placeholder="พิมพ์ข้อความที่ต้องการแปล"

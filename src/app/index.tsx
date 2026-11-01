@@ -1,21 +1,26 @@
 import { useEffect, useRef, useState } from "react";
-import { KeyboardAvoidingView, Pressable, ScrollView, Text, useWindowDimensions, View } from "react-native";
+import { KeyboardAvoidingView, ScrollView, Text, useWindowDimensions, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { addContext, type Lang, translate, type TranslateResponse } from "../api";
 import type { AiSettings } from "../providers";
 import { loadSettings, saveSettings } from "../settings";
-import { Settings } from "../ui/icons";
 import { ContextDeck } from "../ui/ContextDeck";
-import { isWide } from "../ui/layout";
+import { Header } from "../ui/Header";
+import { KeySuggestion } from "../ui/KeySuggestion";
 import { LanguageBar } from "../ui/LanguageBar";
+import { isWide } from "../ui/layout";
 import { SettingsSheet } from "../ui/SettingsSheet";
 import { SourcePane } from "../ui/SourcePane";
+import { useToast } from "../ui/Toast";
 
 // 24 (p-3 x2) + 36 (title) + 12 (gap-3) + 320 (panel min-h-80): below this the wide page scrolls.
 const WIDE_MIN_HEIGHT = 392;
 
 export default function Index() {
-  const wide = isWide(useWindowDimensions().width);
+  const { width, height } = useWindowDimensions();
+  const wide = isWide(width);
+  const compact = wide && height < 500; // landscape phone
+  const toast = useToast();
   const [text, setText] = useState("");
   const [target, setTarget] = useState<Lang>("en");
   const [ai, setAi] = useState<AiSettings | null>(null);
@@ -46,7 +51,13 @@ export default function Index() {
   }, [saved]);
 
   async function submit() {
-    if (!ai || translating.current) return;
+    if (!ai) {
+      if (settingsLoaded) {
+        toast.show({ kind: "info", message: "ใส่ API key ในการตั้งค่าก่อนแปล", action: { label: "ตั้งค่า", onPress: () => setSettingsOpen(true) } });
+      }
+      return;
+    }
+    if (translating.current) return;
     translating.current = true;
     setLoading(true);
     setError(null);
@@ -77,31 +88,27 @@ export default function Index() {
     }
   }
 
+  const needsKey = settingsLoaded && !ai;
   const header = (
-    <View className="flex-row items-center">
-      <Text accessibilityRole="header" className="flex-1 font-sans-semibold text-input text-ink wide:text-title">Tranzlator</Text>
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel="ตั้งค่า"
-        onPress={() => setSettingsOpen(true)}
-        className="h-11 w-11 items-center justify-center rounded-full active:opacity-70"
-      >
-        <Settings size={22} className="text-ink" />
-      </Pressable>
-    </View>
+    <Header
+      compact={compact}
+      wide={wide}
+      needsKey={needsKey}
+      onHome={() => {
+        setText("");
+        setData(null);
+        setError(null);
+        setSelected(null);
+      }}
+      onSettings={() => setSettingsOpen(true)}
+    />
   );
   const source = <SourcePane value={text} onChange={setText} onSubmit={submit} loading={loading} disabled={!ai} />;
   const results =
-    settingsLoaded && !ai ? (
-      <View className="items-start gap-3">
-        <Text className="font-sans text-body text-muted">ใส่ API key ในหน้าตั้งค่าเพื่อเริ่มแปล</Text>
-        <Pressable
-          accessibilityRole="button"
-          onPress={() => setSettingsOpen(true)}
-          className="min-h-11 items-center justify-center rounded-full bg-graphite px-6 active:opacity-80"
-        >
-          <Text className="font-sans-semibold text-body text-paper">ตั้งค่า</Text>
-        </Pressable>
+    needsKey ? (
+      <View className="gap-3">
+        <KeySuggestion onPress={() => setSettingsOpen(true)} />
+        <Text className="font-sans text-body text-muted">คำแปลแต่ละบริบทจะแสดงที่นี่</Text>
       </View>
     ) : data || loading || error ? (
       <ContextDeck
