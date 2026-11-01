@@ -1,6 +1,7 @@
 /** @type {import('tailwindcss').Config} */
 module.exports = {
   content: ["./src/**/*.{ts,tsx}"],
+  future: { hoverOnlyWhenSupported: true }, // hover styles only where (hover: hover), per spec
   darkMode: "class", // no dark mode in the spec; "media" makes NativeWind throw on web when the app pins a light color scheme
   presets: [require("nativewind/preset")],
   theme: {
@@ -31,7 +32,10 @@ module.exports = {
         translation: ["22px", "30px"],
         title: ["28px", "36px"],
       },
-      boxShadow: { card: "0 2px 4px rgba(0,0,0,0.05), 0 4px 8px rgba(0,0,0,0.10)" },
+      boxShadow: {
+        card: "0 2px 4px rgba(0,0,0,0.05), 0 4px 8px rgba(0,0,0,0.10)",
+        "card-hover": "0 3px 6px rgba(0,0,0,0.06), 0 6px 12px rgba(0,0,0,0.12)",
+      },
       screens: { wide: "768px" },
     },
   },

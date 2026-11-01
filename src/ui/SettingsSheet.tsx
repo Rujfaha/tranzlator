@@ -2,7 +2,9 @@ import { useEffect, useState } from "react";
 import {
   KeyboardAvoidingView, Linking, Modal, Platform, Pressable, ScrollView, Text, TextInput, useWindowDimensions, View,
 } from "react-native";
-import Animated, { useAnimatedStyle, useReducedMotion, useSharedValue, withTiming } from "react-native-reanimated";
+import Animated, {
+  ReduceMotion, useAnimatedStyle, useReducedMotion, useSharedValue, withTiming,
+} from "react-native-reanimated";
 import { type AiSettings, PROVIDER_INFO, type Provider } from "../providers";
 import { Check, ChevronDown, X } from "./icons";
 import { isWide } from "./layout";
@@ -42,6 +44,7 @@ function Form({ initial, onClose, onSave }: Omit<Props, "open">) {
     progress.value = withTiming(1, {
       duration: reduceMotion ? motion.duration.fast : motion.duration.sheet,
       easing: motion.ease.standard,
+      reduceMotion: ReduceMotion.Never, // we handle reduced motion ourselves: fade only
     });
   }, [progress, reduceMotion]);
   const animated = useAnimatedStyle(() => ({
