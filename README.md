@@ -50,6 +50,15 @@ npm run deploy       # export เว็บ แล้ว wrangler deploy
 
 Rate limit 20 ครั้ง/นาที/IP ตั้งใน `wrangler.jsonc` (`ratelimits`)
 
+### Deploy อัตโนมัติจาก GitHub
+
+`.github/workflows/deploy.yml` รัน typecheck + เทสต์ทุก push/PR และเมื่อ push เข้า `main` จะ migrate D1 แล้ว deploy ให้เอง ต้องตั้ง repository secrets 2 ตัว (Settings → Secrets and variables → Actions):
+
+- `CLOUDFLARE_API_TOKEN` — สร้างจาก Cloudflare dashboard → My Profile → API Tokens → template "Edit Cloudflare Workers" แล้วเพิ่มสิทธิ์ Account → D1 → Edit
+- `CLOUDFLARE_ACCOUNT_ID` — ดูได้จาก `npx wrangler whoami`
+
+ถ้า fork ไปใช้เอง ต้องเปลี่ยน `database_id` ใน `wrangler.jsonc` เป็นของบัญชีตัวเองด้วย
+
 ## Android APK
 
 ต้องมีบัญชี Expo และต้อง deploy Worker ก่อน แก้ `eas.json` โปรไฟล์ `preview` ให้ `EXPO_PUBLIC_API_URL` เป็น URL ของ Worker แล้ว
