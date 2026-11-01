@@ -5,7 +5,7 @@
         "buildType": "apk"
       },
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://<worker>.workers.dev"
+        "EXPO_PUBLIC_API_URL": "https://tranzlator.ruijtech59.workers.dev"
       }
     }
   }

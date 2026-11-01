@@ -45,3 +45,7 @@ example
 # Cloudflare
 .wrangler/
 .dev.vars
+
+# expo prebuild output (built in CI)
+/android
+/ios

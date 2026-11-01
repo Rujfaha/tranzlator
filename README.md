@@ -1,6 +1,30 @@
-# Tranzlator
+# tranzlator
 
-แอปแปลภาษาที่ให้คำแปลแยกตามบริบทเป็นการ์ด และเพิ่มบริบทเองได้ ใช้ได้ทั้งเว็บและ Android APK
+แปลภาษาแบบเข้าใจบริบท — พิมพ์ข้อความครั้งเดียว ได้คำแปลหลายแบบแยกตามบริบท (ทางการ, เป็นกันเอง, คุยกับเพื่อน, โพสต์โซเชียล …) แล้วเพิ่มบริบทที่ต้องการเองได้ รองรับ 190+ ภาษา ใช้ AI ที่คุณเลือกด้วย API key ของคุณเอง ฟรีและ open source
+
+<p>
+  <a href="https://github.com/Rujfaha/tranzlator/releases/latest/download/tranzlator.apk"><img alt="ดาวน์โหลด APK สำหรับ Android" src="https://img.shields.io/badge/%E0%B8%94%E0%B8%B2%E0%B8%A7%E0%B8%99%E0%B9%8C%E0%B9%82%E0%B8%AB%E0%B8%A5%E0%B8%94-APK%20Android-171717?style=for-the-badge&logo=android&logoColor=white"></a>
+  <a href="https://tranzlator.ruijtech59.workers.dev"><img alt="เปิดเว็บแอป" src="https://img.shields.io/badge/%E0%B9%80%E0%B8%9B%E0%B8%B4%E0%B8%94-%E0%B9%80%E0%B8%A7%E0%B9%87%E0%B8%9A%E0%B9%81%E0%B8%AD%E0%B8%9B-737373?style=for-the-badge&logo=cloudflare&logoColor=white"></a>
+  <a href="https://github.com/Rujfaha/tranzlator/releases"><img alt="ทุกเวอร์ชัน" src="https://img.shields.io/github/v/release/Rujfaha/tranzlator?style=for-the-badge&label=%E0%B9%80%E0%B8%A7%E0%B8%AD%E0%B8%A3%E0%B9%8C%E0%B8%8A%E0%B8%B1%E0%B8%99&color=EBEBEB&labelColor=262626"></a>
+</p>
+
+<p>
+  <img src="docs/screenshots/ui-refresh/1440x900-result.png" alt="หน้าเว็บ: คำแปลแยกตามบริบท" width="62%">
+  <img src="docs/screenshots/ui-refresh-2/360x800-mobile-sheet-result.png" alt="หน้ามือถือ" width="25%">
+</p>
+
+## ติดตั้งบน Android
+
+1. กดปุ่ม **ดาวน์โหลด APK** ด้านบนบนมือถือ (หรือไปที่ [Releases](https://github.com/Rujfaha/tranzlator/releases/latest) แล้วเลือก `tranzlator.apk`)
+2. เปิดไฟล์ที่ดาวน์โหลด ถ้าระบบถาม ให้อนุญาต "ติดตั้งแอปจากแหล่งที่ไม่รู้จัก" สำหรับเบราว์เซอร์หรือแอปไฟล์ที่ใช้เปิด
+3. เปิดแอป → ไอคอนตั้งค่า → เลือกผู้ให้บริการ AI และใส่ API key ของคุณ
+
+ถ้าติดตั้งทับเวอร์ชันเก่าไม่ได้ ("แอปไม่ได้ติดตั้ง") ให้ถอนการติดตั้งเวอร์ชันเก่าก่อน — APK ตอนนี้ยังไม่ได้เซ็นด้วยคีย์ถาวร
+
+APK ถูก build อัตโนมัติโดย GitHub Actions (`.github/workflows/android.yml`) ทุกครั้งที่ push เข้า `main`
+
+## สำหรับนักพัฒนา
+
 โค้ดชุดเดียว (Expo + NativeWind) ส่วนเว็บและ API รันบน Cloudflare Worker ตัวเดียว (static assets + `/api/*` + D1)
 
 ออกแบบและแผนงาน: `docs/superpowers/specs/` และ `docs/superpowers/plans/`
@@ -61,11 +85,11 @@ Rate limit 20 ครั้ง/นาที/IP ตั้งใน `wrangler.jsonc
 
 ## Android APK
 
-ต้องมีบัญชี Expo และต้อง deploy Worker ก่อน แก้ `eas.json` โปรไฟล์ `preview` ให้ `EXPO_PUBLIC_API_URL` เป็น URL ของ Worker แล้ว
+GitHub Actions build ให้อัตโนมัติ (ดูด้านบน) โดยชี้ API ไปที่ Worker ของ repository variable `API_URL` (ไม่ตั้ง = Worker ของโปรเจกต์นี้) package id คือ `com.rujfaha.tranzlator`
+
+ทางเลือก build เองผ่าน EAS (ต้องมีบัญชี Expo): แก้ `eas.json` โปรไฟล์ `preview` ให้ `EXPO_PUBLIC_API_URL` เป็น URL ของ Worker แล้ว
 
 ```bash
 npx eas-cli@latest login
 npx eas-cli@latest build -p android --profile preview
 ```
-
-ครั้งแรก EAS จะถาม Android application id ให้ตั้งเอง ติดตั้งไฟล์ `.apk` ที่ได้บนเครื่อง Android

@@ -8,6 +8,7 @@
     "scheme": "tranzlator",
     "userInterfaceStyle": "light",
     "android": {
+      "package": "com.rujfaha.tranzlator",
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/images/android-icon-foreground.png",

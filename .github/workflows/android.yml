@@ -1,0 +1,44 @@
+name: Android APK
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: android-apk
+  cancel-in-progress: true
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    env:
+      # Forks: set repository variable API_URL to your own Worker URL.
+      EXPO_PUBLIC_API_URL: ${{ vars.API_URL || 'https://tranzlator.ruijtech59.workers.dev' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - run: npm ci
+      - run: npx expo prebuild --platform android --no-install
+      # shortcut: release is signed with the runner's generated debug keystore, so each build has a
+      # different signature and updating needs an uninstall first; add a real keystore secret before Play Store.
+      - run: ./gradlew assembleRelease --no-daemon
+        working-directory: android
+      - run: mv android/app/build/outputs/apk/release/app-release.apk tranzlator.apk
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v1.0.${{ github.run_number }}
+          name: Tranzlator 1.0.${{ github.run_number }}
+          body: "Android APK built from ${{ github.sha }}. ถ้าติดตั้งทับเวอร์ชันเก่าไม่ได้ ให้ถอนการติดตั้งก่อน"
+          files: tranzlator.apk
+          make_latest: true
