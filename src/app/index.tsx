@@ -4,7 +4,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { addContext, ApiError, type Lang, translate, type TranslateResponse } from "../api";
 import { langName } from "../../shared/languages";
 import type { AiSettings } from "../providers";
-import { loadSettings, saveSettings } from "../settings";
+import { loadLangs, loadSettings, saveLangs, saveSettings } from "../settings";
 import { BottomDock } from "../ui/BottomDock";
 import { ContextDeck } from "../ui/ContextDeck";
 import { Header } from "../ui/Header";
@@ -52,6 +52,19 @@ export default function Index() {
   // State lags a render behind, so rapid repeats (double click, held Ctrl+Enter) need a ref to stay single-flight.
   const translating = useRef(false);
   const addingNow = useRef(false);
+
+  const [langsLoaded, setLangsLoaded] = useState(false);
+  useEffect(() => {
+    loadLangs().then((l) => {
+      setTarget(l.target);
+      setRecents(l.recents);
+      setLangsLoaded(true);
+    });
+  }, []);
+  // Saved only after the first load, or the defaults would overwrite the stored choice.
+  useEffect(() => {
+    if (langsLoaded) saveLangs({ target, recents });
+  }, [langsLoaded, target, recents]);
 
   useEffect(() => {
     loadSettings().then((s) => {
