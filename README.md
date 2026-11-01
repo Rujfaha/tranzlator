@@ -19,9 +19,9 @@
 2. เปิดไฟล์ที่ดาวน์โหลด ถ้าระบบถาม ให้อนุญาต "ติดตั้งแอปจากแหล่งที่ไม่รู้จัก" สำหรับเบราว์เซอร์หรือแอปไฟล์ที่ใช้เปิด
 3. เปิดแอป → ไอคอนตั้งค่า → เลือกผู้ให้บริการ AI และใส่ API key ของคุณ
 
-ถ้าติดตั้งทับเวอร์ชันเก่าไม่ได้ ("แอปไม่ได้ติดตั้ง") ให้ถอนการติดตั้งเวอร์ชันเก่าก่อน — APK ตอนนี้ยังไม่ได้เซ็นด้วยคีย์ถาวร
+APK ถูก build อัตโนมัติโดย GitHub Actions (`.github/workflows/android.yml`) ทุกครั้งที่ push เข้า `main` และเซ็นด้วยคีย์ส่วนตัวของโปรเจกต์ (อัปเดตทับเวอร์ชันเดิมได้) ดาวน์โหลดจากลิงก์ในหน้านี้หรือหน้า Releases เท่านั้น
 
-APK ถูก build อัตโนมัติโดย GitHub Actions (`.github/workflows/android.yml`) ทุกครั้งที่ push เข้า `main`
+ถ้าเคยติดตั้งเวอร์ชันทดสอบรุ่นแรก (ที่ release notes ไม่มีคำว่า signed) แล้วติดตั้งทับไม่ได้ ให้ถอนการติดตั้งเวอร์ชันนั้นก่อน
 
 ## สำหรับนักพัฒนา
 
@@ -86,6 +86,17 @@ Rate limit 20 ครั้ง/นาที/IP ตั้งใน `wrangler.jsonc
 ## Android APK
 
 GitHub Actions build ให้อัตโนมัติ (ดูด้านบน) โดยชี้ API ไปที่ Worker ของ repository variable `API_URL` (ไม่ตั้ง = Worker ของโปรเจกต์นี้) package id คือ `com.rujfaha.tranzlator`
+
+การเซ็น APK ต้องมี repository secrets 4 ตัว ถ้าขาดตัวใด workflow จะไม่ปล่อย APK (ไม่ใช้ debug key สาธารณะของ Expo แทน):
+
+| Secret | ค่า |
+|---|---|
+| `ANDROID_KEYSTORE_BASE64` | ไฟล์ keystore (`.jks`) เข้ารหัส base64 |
+| `ANDROID_KEYSTORE_PASSWORD` | รหัสผ่าน keystore |
+| `ANDROID_KEY_ALIAS` | alias ของคีย์ |
+| `ANDROID_KEY_PASSWORD` | รหัสผ่านคีย์ |
+
+สร้าง keystore เอง (ถ้า fork): `keytool -genkeypair -keystore release.jks -storetype PKCS12 -alias tranzlator -keyalg RSA -keysize 4096 -validity 10000` — เก็บไฟล์และรหัสผ่านไว้ให้ดี ทำหายแล้วจะออกอัปเดตทับให้ผู้ใช้เดิมไม่ได้
 
 ทางเลือก build เองผ่าน EAS (ต้องมีบัญชี Expo): แก้ `eas.json` โปรไฟล์ `preview` ให้ `EXPO_PUBLIC_API_URL` เป็น URL ของ Worker แล้ว
 

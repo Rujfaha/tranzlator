@@ -32,15 +32,31 @@ jobs:
           java-version: 17
       - run: npm ci
       - run: npx expo prebuild --platform android --no-install
-      # shortcut: release is signed with the runner's generated debug keystore, so each build has a
-      # different signature and updating needs an uninstall first; add a real keystore secret before Play Store.
       - run: ./gradlew assembleRelease --no-daemon
         working-directory: android
-      - run: mv android/app/build/outputs/apk/release/app-release.apk tranzlator.apk
+      # Gradle signs release with Expo's public debug key; re-sign with our private key or publish nothing.
+      - name: Sign with release keystore
+        env:
+          KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          if [ -z "$KEYSTORE_B64" ] || [ -z "$KEYSTORE_PASSWORD" ] || [ -z "$KEY_ALIAS" ] || [ -z "$KEY_PASSWORD" ]; then
+            echo "::error::Android signing secrets are missing; refusing to publish an APK signed with the public debug key"
+            exit 1
+          fi
+          echo "$KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/release.jks"
+          apksigner="$(ls -d "$ANDROID_HOME"/build-tools/*/ | sort -V | tail -1)apksigner"
+          "$apksigner" sign --ks "$RUNNER_TEMP/release.jks" --ks-pass env:KEYSTORE_PASSWORD \
+            --ks-key-alias "$KEY_ALIAS" --key-pass env:KEY_PASSWORD \
+            --out tranzlator.apk android/app/build/outputs/apk/release/app-release.apk
+          rm "$RUNNER_TEMP/release.jks"
+          "$apksigner" verify --print-certs tranzlator.apk | grep -i "certificate DN"
       - uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2
         with:
           tag_name: v1.0.${{ github.run_number }}
           name: Tranzlator 1.0.${{ github.run_number }}
-          body: "Android APK built from ${{ github.sha }}. ถ้าติดตั้งทับเวอร์ชันเก่าไม่ได้ ให้ถอนการติดตั้งก่อน"
+          body: "Android APK built from ${{ github.sha }}, signed with the project release key."
           files: tranzlator.apk
           make_latest: true
