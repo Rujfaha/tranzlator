@@ -1,31 +1,48 @@
 import { applyD1Migrations } from "cloudflare:test";
 import { env } from "cloudflare:workers";
-import { beforeAll, expect, it } from "vitest";
+import { afterAll, beforeAll, beforeEach, expect, it } from "vitest";
+import { AiAuthError, AiError, AiQuotaError } from "../worker/ai";
+import { getTranslation, saveTranslation } from "../worker/db";
 import type { AskModel } from "../worker/env";
 import { createHandler } from "../worker/index";
 
 const AI = { "X-AI-Provider": "anthropic", "X-AI-Key": "test-key", "X-AI-Model": "m" };
 const ctx = { waitUntil() {}, passThroughOnException() {} } as unknown as ExecutionContext;
 
-let calls = 0;
-const ask: AskModel = async () => {
-  calls++;
+const refuse: AskModel = async () => {
   throw new Error("ask must not be called");
 };
-const handler = createHandler((...a) => ask(...a));
+let calls = 0;
+let ask: AskModel = refuse;
+let rateOk = true;
+const handler = createHandler((...a) => {
+  calls++;
+  return ask(...a);
+});
 const testEnv = {
   DB: env.DB,
-  RATE_LIMITER: { limit: async () => ({ success: true }) },
+  RATE_LIMITER: { limit: async () => ({ success: rateOk }) },
   ASSETS: { fetch: async () => new Response("asset") },
 } as never;
+const bodies: string[] = [];
 
-function post(path: string, body: unknown, headers: Record<string, string> = AI) {
+beforeEach(() => {
+  calls = 0;
+  ask = refuse;
+  rateOk = true;
+});
+// Review Focus 6: no response in this file may contain the API key.
+afterAll(() => expect(bodies.filter((b) => b.includes(AI["X-AI-Key"]))).toEqual([]));
+
+async function post(path: string, body: unknown, headers: Record<string, string> = AI) {
   const req = new Request(`http://tranzlator.test${path}`, {
     method: "POST",
     headers,
     body: typeof body === "string" ? body : JSON.stringify(body),
   });
-  return handler.fetch!(req as never, testEnv, ctx);
+  const res = await handler.fetch!(req as never, testEnv, ctx);
+  bodies.push(await res.clone().text());
+  return res;
 }
 const errorOf = async (res: Response) => ((await res.json()) as { error: string }).error;
 
@@ -60,4 +77,100 @@ it("400 when X-AI-Key empty", async () => {
 it("404 for unknown /api route", async () => {
   const res = await post("/api/nope", {});
   expect(res.status).toBe(404);
+});
+
+// --- Task 3: POST /api/translate ---
+const reply = (n = 3) =>
+  JSON.stringify({
+    sourceLang: "th",
+    results: Array.from({ length: n }, (_, i) => ({ context: `บริบท ${i + 1}`, text: `Text ${i + 1}`, note: "ใช้ได้ทั่วไป" })),
+  });
+const good: AskModel = async () => reply();
+const json = async <T = any>(res: Response) => (await res.json()) as T;
+const rows = async (sql: string) => (await env.DB.prepare(sql).first<{ n: number }>())!.n;
+
+it("returns results from AI and stores them", async () => {
+  ask = good;
+  const res = await post("/api/translate", { text: "ส่งไฟล์ให้หน่อย", target: "en" });
+  expect(res.status).toBe(200);
+  const body = await json(res);
+  expect(body.sourceLang).toBe("th");
+  expect(body.results).toHaveLength(3);
+  expect(body.results.every((r: { custom: boolean }) => r.custom === false)).toBe(true);
+  expect(calls).toBe(1);
+  expect(await rows(`SELECT count(*) n FROM results WHERE translation_id = '${body.id}'`)).toBe(3);
+});
+it("second identical request (extra whitespace) is a cache hit", async () => {
+  ask = good;
+  const first = await json(await post("/api/translate", { text: "ขอบคุณมาก", target: "en" }));
+  const second = await json(await post("/api/translate", { text: "  ขอบคุณมาก ", target: "en" }));
+  expect(calls).toBe(1);
+  expect(second).toEqual(first);
+});
+it("same text, different target calls AI again", async () => {
+  ask = good;
+  await post("/api/translate", { text: "สวัสดีครับ", target: "en" });
+  await post("/api/translate", { text: "สวัสดีครับ", target: "ja" });
+  expect(calls).toBe(2);
+});
+it("same text, different X-AI-Model calls AI again", async () => {
+  ask = good;
+  await post("/api/translate", { text: "ราตรีสวัสดิ์", target: "en" });
+  await post("/api/translate", { text: "ราตรีสวัสดิ์", target: "en" }, { ...AI, "X-AI-Model": "other" });
+  expect(calls).toBe(2);
+});
+it("cache hit still requires the AI headers", async () => {
+  ask = good;
+  await post("/api/translate", { text: "แล้วพบกัน", target: "en" });
+  const res = await post("/api/translate", { text: "แล้วพบกัน", target: "en" }, {});
+  expect(res.status).toBe(400);
+});
+it("502 with Thai error when AI returns garbage, nothing stored", async () => {
+  ask = async () => "sorry, I cannot do that";
+  const before = await rows("SELECT count(*) n FROM translations");
+  const res = await post("/api/translate", { text: "ข้อความที่ล้มเหลว", target: "en" });
+  expect(res.status).toBe(502);
+  expect(await errorOf(res)).toBe("แปลไม่สำเร็จ กดแปลอีกครั้ง");
+  expect(await rows("SELECT count(*) n FROM translations")).toBe(before);
+});
+it("502 when ask throws, even if the error text contains the key", async () => {
+  ask = async () => {
+    throw new AiError("provider said: bad request test-key");
+  };
+  const res = await post("/api/translate", { text: "ข้อความที่ล้มเหลว 2", target: "en" });
+  expect(res.status).toBe(502);
+  ask = async () => {
+    throw new Error("network test-key");
+  };
+  expect((await post("/api/translate", { text: "ข้อความที่ล้มเหลว 3", target: "en" })).status).toBe(502);
+});
+it("429 when RATE_LIMITER.limit returns success:false", async () => {
+  ask = good;
+  rateOk = false;
+  const res = await post("/api/translate", { text: "ถี่เกินไป", target: "en" });
+  expect(res.status).toBe(429);
+  expect(await errorOf(res)).toBe("ส่งคำขอถี่เกินไป ลองใหม่ในอีก 1 นาที");
+  expect(calls).toBe(0);
+});
+it("401 with Thai message when ask throws AiAuthError", async () => {
+  ask = async () => {
+    throw new AiAuthError("rejected test-key");
+  };
+  const res = await post("/api/translate", { text: "key ผิด", target: "en" });
+  expect(res.status).toBe(401);
+  expect(await errorOf(res)).toBe("API key ไม่ถูกต้อง ตรวจ key ในหน้าตั้งค่า");
+});
+it("429 with quota message when ask throws AiQuotaError", async () => {
+  ask = async () => {
+    throw new AiQuotaError("quota");
+  };
+  const res = await post("/api/translate", { text: "โควตาหมด", target: "en" });
+  expect(res.status).toBe(429);
+  expect(await errorOf(res)).toBe("โควตาของ API key นี้หมด ตรวจที่ผู้ให้บริการของคุณ");
+});
+it("saving the same translation twice does not duplicate results", async () => {
+  const results = [{ context: "c", text: "t", note: "n", custom: false }];
+  await saveTranslation(env.DB, "dup-id", "x", "th", "en", results);
+  await saveTranslation(env.DB, "dup-id", "x", "th", "en", results);
+  expect((await getTranslation(env.DB, "dup-id"))!.results).toHaveLength(1);
 });
