@@ -16,3 +16,7 @@ export const pushRecent = (recents: Lang[], lang: Lang): Lang[] =>
 
 export const toastDuration = (kind: "success" | "error" | "info", hasAction: boolean) =>
   kind === "success" && !hasAction ? TOAST_MS : TOAST_LONG_MS;
+
+export const LANG_LABEL: Record<Lang, string> = {
+  th: "ไทย", en: "อังกฤษ", ja: "ญี่ปุ่น", zh: "จีน", ko: "เกาหลี", vi: "เวียดนาม", id: "อินโดนีเซีย",
+};

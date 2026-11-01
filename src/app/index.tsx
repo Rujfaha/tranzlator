@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { type ComponentRef, useEffect, useRef, useState } from "react";
 import { KeyboardAvoidingView, ScrollView, Text, useWindowDimensions, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { addContext, type Lang, translate, type TranslateResponse } from "../api";
@@ -7,14 +7,16 @@ import { loadSettings, saveSettings } from "../settings";
 import { ContextDeck } from "../ui/ContextDeck";
 import { Header } from "../ui/Header";
 import { KeySuggestion } from "../ui/KeySuggestion";
-import { LanguageBar } from "../ui/LanguageBar";
+import { ChevronDown } from "../ui/icons";
 import { isWide } from "../ui/layout";
+import { LanguageMenu } from "../ui/LanguageMenu";
+import { LanguageTabs } from "../ui/LanguageTabs";
+import { PressableScale } from "../ui/PressableScale";
 import { SettingsSheet } from "../ui/SettingsSheet";
 import { SourcePane } from "../ui/SourcePane";
+import { LANG_LABEL, pushRecent } from "../ui/text";
 import { useToast } from "../ui/Toast";
-
-// 24 (p-3 x2) + 36 (title) + 12 (gap-3) + 320 (panel min-h-80): below this the wide page scrolls.
-const WIDE_MIN_HEIGHT = 392;
+import { WideLayout } from "../ui/WideLayout";
 
 export default function Index() {
   const { width, height } = useWindowDimensions();
@@ -23,6 +25,10 @@ export default function Index() {
   const toast = useToast();
   const [text, setText] = useState("");
   const [target, setTarget] = useState<Lang>("en");
+  const [recents, setRecents] = useState<Lang[]>(["en", "th", "ja"]); // the target tabs, most recent first
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [anchor, setAnchor] = useState<{ x: number; y: number; width: number; height: number }>();
+  const targetRow = useRef<ComponentRef<typeof View>>(null);
   const [ai, setAi] = useState<AiSettings | null>(null);
   const [settingsLoaded, setSettingsLoaded] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -33,7 +39,6 @@ export default function Index() {
   const [batch, setBatch] = useState(0);
   const [selected, setSelected] = useState<number | null>(null);
   const [adding, setAdding] = useState(false);
-  const [viewHeight, setViewHeight] = useState(0);
   // State lags a render behind, so rapid repeats (double click, held Ctrl+Enter) need a ref to stay single-flight.
   const translating = useRef(false);
   const addingNow = useRef(false);
@@ -103,12 +108,56 @@ export default function Index() {
       onSettings={() => setSettingsOpen(true)}
     />
   );
-  const source = <SourcePane value={text} onChange={setText} onSubmit={submit} loading={loading} disabled={!ai} />;
+  const source = (
+    <SourcePane
+      variant="card"
+      size={compact ? "source-sm" : "source-md"}
+      compact={compact}
+      value={text}
+      onChange={setText}
+      onSubmit={submit}
+      loading={loading}
+      disabled={!ai}
+    />
+  );
+  const tabs = {
+    source: (
+      <LanguageTabs
+        active="auto"
+        items={[{ key: "auto", label: data ? `ตรวจพบ: ${LANG_LABEL[data.sourceLang as Lang] ?? data.sourceLang}` : "ตรวจหาภาษา" }]}
+      />
+    ),
+    target: (
+      <View ref={targetRow} collapsable={false}>
+        <LanguageTabs
+          active={target}
+          items={recents.map((l) => ({ key: l, label: LANG_LABEL[l] }))}
+          onSelect={(k) => setTarget(k as Lang)}
+          trailing={
+            <PressableScale
+              accessibilityRole="button"
+              accessibilityLabel="เลือกภาษาอื่น"
+              accessibilityState={{ expanded: menuOpen }}
+              onPress={() =>
+                targetRow.current?.measureInWindow((x, y, width, height) => {
+                  setAnchor({ x, y, width, height });
+                  setMenuOpen(true);
+                })
+              }
+              className="h-11 w-11 items-center justify-center rounded-full hover:bg-chip"
+            >
+              <ChevronDown size={20} className="text-ink" />
+            </PressableScale>
+          }
+        />
+      </View>
+    ),
+  };
   const results =
     needsKey ? (
       <View className="gap-3">
-        <KeySuggestion onPress={() => setSettingsOpen(true)} />
-        <Text className="font-sans text-body text-muted">คำแปลแต่ละบริบทจะแสดงที่นี่</Text>
+        <KeySuggestion onShell onPress={() => setSettingsOpen(true)} />
+        <Text className="font-sans text-source-md text-disabled">คำแปลแต่ละบริบทจะแสดงที่นี่</Text>
       </View>
     ) : data || loading || error ? (
       <ContextDeck
@@ -123,39 +172,38 @@ export default function Index() {
         adding={adding}
       />
     ) : (
-      <Text className="font-sans text-body text-muted">คำแปลแต่ละบริบทจะแสดงที่นี่</Text>
+      <Text className="font-sans text-source-md text-disabled">คำแปลแต่ละบริบทจะแสดงที่นี่</Text>
     );
 
   return (
-    <SafeAreaView className={`flex-1 ${wide ? "bg-shell" : "bg-paper"}`}>
+    <SafeAreaView className="flex-1 bg-paper">
       <KeyboardAvoidingView behavior="height" className="flex-1">
         {wide ? (
-          // Scrolls as a page when the viewport is too short (landscape phone + keyboard).
-          <ScrollView
-            keyboardShouldPersistTaps="handled"
-            onLayout={(e) => setViewHeight(e.nativeEvent.layout.height)}
-            contentContainerStyle={{ height: Math.max(viewHeight, WIDE_MIN_HEIGHT) }}
-          >
-            <View className="flex-1 gap-3 p-3">
-              {header}
-              <View className="min-h-80 flex-1 overflow-hidden rounded-panel bg-paper">
-                <LanguageBar target={target} onChange={setTarget} detected={data?.sourceLang} />
-                <View className="flex-1 flex-row">
-                  <View className="flex-1 border-r border-line">{source}</View>
-                  <ScrollView nestedScrollEnabled className="flex-1" contentContainerClassName="gap-3 p-4">{results}</ScrollView>
-                </View>
-              </View>
-            </View>
-          </ScrollView>
+          <WideLayout compact={compact} header={header} tabs={tabs} source={source} results={results} />
         ) : (
-          <ScrollView keyboardShouldPersistTaps="handled" contentContainerClassName="pt-4">
-            <View className="px-4 pb-2">{header}</View>
-            <LanguageBar target={target} onChange={setTarget} detected={data?.sourceLang} />
-            {source}
-            <View className="gap-3 border-t border-line p-4">{results}</View>
+          // Stopgap until the mobile layout: the same pieces, stacked.
+          <ScrollView keyboardShouldPersistTaps="handled" className="flex-1">
+            {header}
+            <View className="gap-3 px-4 pb-6">
+              {tabs.source}
+              {tabs.target}
+              {source}
+              <View className="gap-3 rounded-container bg-shell p-4">{results}</View>
+            </View>
           </ScrollView>
         )}
       </KeyboardAvoidingView>
+      <LanguageMenu
+        open={menuOpen}
+        anchor={anchor}
+        selected={target}
+        onSelect={(lang) => {
+          setRecents((r) => pushRecent(r, lang));
+          setTarget(lang);
+          setMenuOpen(false);
+        }}
+        onClose={() => setMenuOpen(false)}
+      />
       <SettingsSheet
         open={settingsOpen}
         initial={ai}

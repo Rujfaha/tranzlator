@@ -1,7 +1,15 @@
-import { Pressable, Text, TextInput, View } from "react-native";
+import { useState } from "react";
+import { Text, TextInput, View } from "react-native";
+import Animated, { FadeIn, FadeOut, ReduceMotion } from "react-native-reanimated";
 import { X } from "./icons";
+import { motion } from "./motion";
+import { PressableScale } from "./PressableScale";
+import { MAX_SOURCE, type sourceSize } from "./text";
 
-const MAX = 2000;
+// Literal class names so Tailwind generates them (`text-${size}` would not be scanned).
+const SIZE_CLASS = { "source-lg": "text-source-lg", "source-md": "text-source-md", "source-sm": "text-source-sm" };
+const fadeIn = FadeIn.duration(motion.duration.fast).reduceMotion(ReduceMotion.Never);
+const fadeOut = FadeOut.duration(motion.duration.fast).reduceMotion(ReduceMotion.Never);
 
 type Props = {
   value: string;
@@ -9,50 +17,72 @@ type Props = {
   onSubmit: () => void;
   loading: boolean;
   disabled?: boolean; // e.g. no API key yet
+  variant: "card" | "bare"; // card: bordered box with its own translate button (wide); bare: borderless, translate lives in the dock (mobile)
+  size: ReturnType<typeof sourceSize>;
+  compact?: boolean;
 };
 
-export function SourcePane({ value, onChange, onSubmit, loading, disabled }: Props) {
-  const over = value.length > MAX;
+export function SourcePane({ value, onChange, onSubmit, loading, disabled, variant, size, compact }: Props) {
+  const over = value.length > MAX_SOURCE;
   const ready = value.trim().length > 0 && !over && !loading;
   const canSubmit = ready && !disabled;
+  const card = variant === "card";
+  const [focused, setFocused] = useState(false); // the card border stands in for the focus ring around the whole box
+  const counter = (
+    <Text className={`font-sans text-note ${over ? "text-danger" : "text-muted"}`}>
+      {value.length}/{MAX_SOURCE}
+      {over && "  ยาวเกิน 2000 ตัวอักษร"}
+    </Text>
+  );
   return (
-    <View className="wide:flex-1">
+    <View
+      style={card ? { minHeight: compact ? 140 : 220 } : undefined}
+      className={card ? `flex-1 rounded-container border bg-paper ${focused ? "border-ink" : "border-line"}` : ""}
+    >
       <TextInput
         multiline
         value={value}
         onChangeText={onChange}
+        onFocus={() => setFocused(true)}
+        onBlur={() => setFocused(false)}
         onKeyPress={(e) => {
           const k = e.nativeEvent as unknown as { key: string; ctrlKey?: boolean; metaKey?: boolean };
           if (k.key === "Enter" && (k.ctrlKey || k.metaKey) && ready) onSubmit(); // without a key the page explains why (toast)
         }}
         accessibilityLabel="ข้อความที่ต้องการแปล"
-        placeholder="พิมพ์ข้อความที่ต้องการแปล"
-        placeholderClassName="text-muted"
+        placeholder={card ? "พิมพ์ข้อความที่ต้องการแปล" : "แปลข้อความ"}
+        placeholderClassName={card ? "text-muted" : "text-disabled"}
         textAlignVertical="top"
-        className="min-h-40 px-4 pt-4 font-sans text-input text-ink wide:flex-1"
+        className={`px-4 pt-4 font-sans text-ink outline-none ${SIZE_CLASS[size]} ${card ? "flex-1 pr-14" : "min-h-40"}`}
       />
-      <View className="flex-row items-center gap-3 p-4">
-        <Text className={`flex-1 font-sans text-note ${over ? "text-danger" : "text-muted"}`}>{value.length}/{MAX}</Text>
-        {value.length > 0 && (
-          <Pressable
+      {card && value.length > 0 && (
+        <Animated.View entering={fadeIn} exiting={fadeOut} style={{ position: "absolute", right: 6, top: 6 }}>
+          <PressableScale
             accessibilityRole="button"
             accessibilityLabel="ล้างข้อความ"
             onPress={() => onChange("")}
-            className="h-11 w-11 items-center justify-center rounded-full active:opacity-70"
+            className="h-11 w-11 items-center justify-center rounded-full hover:bg-chip"
           >
             <X size={20} className="text-muted" />
-          </Pressable>
-        )}
-        <Pressable
-          accessibilityRole="button"
-          accessibilityState={{ disabled: !canSubmit }}
-          disabled={!canSubmit}
-          onPress={onSubmit}
-          className={`min-h-11 items-center justify-center rounded-full px-6 ${canSubmit ? "bg-graphite active:opacity-80" : "bg-disabled"}`}
-        >
-          <Text className="font-sans-semibold text-body text-paper">แปล</Text>
-        </Pressable>
-      </View>
+          </PressableScale>
+        </Animated.View>
+      )}
+      {card ? (
+        <View className="flex-row items-center gap-3 p-4">
+          <View className="flex-1">{counter}</View>
+          <PressableScale
+            accessibilityRole="button"
+            accessibilityState={{ disabled: !canSubmit }}
+            disabled={!canSubmit}
+            onPress={onSubmit}
+            className="min-h-11 items-center justify-center rounded-full bg-graphite px-6 hover:bg-ink"
+          >
+            <Text className="font-sans-semibold text-body text-paper">แปล</Text>
+          </PressableScale>
+        </View>
+      ) : (
+        (over || value.length > 0) && <View className="px-4 pb-2">{counter}</View>
+      )}
     </View>
   );
 }

@@ -27,7 +27,7 @@ export function AddContextCard({ onSubmit, loading }: Props) {
   return (
     // The card slides down when a new card is added above it.
     <Animated.View layout={reduceMotion ? undefined : LinearTransition.duration(motion.duration.fan).easing(motion.ease.fan)}>
-      <View className="max-w-xl gap-3 rounded-container border border-dashed border-line p-4">
+      <View className="max-w-xl gap-3 rounded-container border border-dashed border-line bg-paper p-4">
         <View className="flex-row items-center gap-3">
           <TextInput
             value={value}
