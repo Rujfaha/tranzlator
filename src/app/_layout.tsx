@@ -5,6 +5,7 @@ import { useFonts } from "expo-font";
 import { Slot } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { useEffect } from "react";
+import { ToastProvider } from "../ui/Toast";
 import "../../global.css";
 
 SplashScreen.preventAutoHideAsync();
@@ -15,5 +16,9 @@ export default function RootLayout() {
   useEffect(() => {
     if (ready) SplashScreen.hideAsync();
   }, [ready]);
-  return ready ? <Slot /> : null;
+  return ready ? (
+    <ToastProvider>
+      <Slot />
+    </ToastProvider>
+  ) : null;
 }

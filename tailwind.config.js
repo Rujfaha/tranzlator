@@ -31,11 +31,18 @@ module.exports = {
         input: ["17px", "26px"],
         translation: ["22px", "30px"],
         title: ["28px", "36px"],
+        "source-lg": ["28px", "36px"],
+        "source-md": ["22px", "30px"],
+        "source-sm": ["17px", "26px"],
       },
       boxShadow: {
         card: "0 2px 4px rgba(0,0,0,0.05), 0 4px 8px rgba(0,0,0,0.10)",
         "card-hover": "0 3px 6px rgba(0,0,0,0.06), 0 6px 12px rgba(0,0,0,0.12)",
+        popover: "0 4px 6px rgba(0,0,0,0.10), 0 12px 24px rgba(0,0,0,0.15)",
       },
+      // Same values as motion.ts `fast` + `standard`, for CSS hover transitions on web.
+      transitionDuration: { fast: "125ms" },
+      transitionTimingFunction: { standard: "cubic-bezier(0.24, 1, 0.4, 1)" },
       screens: { wide: "768px" },
     },
   },
