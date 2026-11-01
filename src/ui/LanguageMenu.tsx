@@ -1,11 +1,10 @@
 import { useEffect, useState } from "react";
 import { Modal, Text, useWindowDimensions, View } from "react-native";
 import Animated, { ReduceMotion, useAnimatedStyle, useReducedMotion, useSharedValue, withTiming } from "react-native-reanimated";
-import { LANGS, type Lang } from "../api";
+import { type Lang, LANGUAGES } from "../../shared/languages";
 import { Check } from "./icons";
 import { motion } from "./motion";
 import { PressableScale } from "./PressableScale";
-import { LANG_LABEL } from "./text";
 
 type Props = {
   open: boolean;
@@ -46,7 +45,7 @@ export function LanguageMenu({ open, anchor, selected, onSelect, onClose }: Prop
       <PressableScale accessibilityLabel="ปิด" onPress={onClose} className="absolute inset-0" />
       <Animated.View style={[{ position: "absolute", top: (anchor?.y ?? 0) + (anchor?.height ?? 0) + 4, left, width: menuWidth }, style]}>
         <View className="flex-row flex-wrap rounded-container bg-paper p-2 shadow-popover">
-          {LANGS.map((lang) => (
+          {LANGUAGES.map(({ code: lang, th }) => (
             <PressableScale
               key={lang}
               accessibilityRole="button"
@@ -55,7 +54,7 @@ export function LanguageMenu({ open, anchor, selected, onSelect, onClose }: Prop
               className="w-1/3 min-h-11 flex-row items-center gap-2 rounded-element px-3 hover:bg-chip"
             >
               <View className="w-5">{lang === selected && <Check size={18} className="text-ink" />}</View>
-              <Text className="flex-1 font-sans text-body text-ink">{LANG_LABEL[lang]}</Text>
+              <Text className="flex-1 font-sans text-body text-ink">{th}</Text>
             </PressableScale>
           ))}
         </View>

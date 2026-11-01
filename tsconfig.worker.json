@@ -9,5 +9,5 @@
     "skipLibCheck": true,
     "types": ["@cloudflare/workers-types", "@cloudflare/vitest-plugin/types"]
   },
-  "include": ["worker", "test", "vitest.config.mts"]
+  "include": ["shared", "worker", "test", "vitest.config.mts"]
 }

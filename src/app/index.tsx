@@ -2,6 +2,7 @@ import { type ComponentRef, useEffect, useRef, useState } from "react";
 import { Keyboard, KeyboardAvoidingView, Text, useWindowDimensions, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { addContext, ApiError, type Lang, translate, type TranslateResponse } from "../api";
+import { langName } from "../../shared/languages";
 import type { AiSettings } from "../providers";
 import { loadSettings, saveSettings } from "../settings";
 import { BottomDock } from "../ui/BottomDock";
@@ -18,7 +19,7 @@ import { PasteChip } from "../ui/PasteChip";
 import { PressableScale } from "../ui/PressableScale";
 import { SettingsSheet } from "../ui/SettingsSheet";
 import { SourcePane } from "../ui/SourcePane";
-import { LANG_LABEL, pushRecent, sourceSize } from "../ui/text";
+import { pushRecent, sourceSize } from "../ui/text";
 import { useToast } from "../ui/Toast";
 import { WideLayout } from "../ui/WideLayout";
 
@@ -140,14 +141,14 @@ export default function Index() {
     source: (
       <LanguageTabs
         active="auto"
-        items={[{ key: "auto", label: data ? `ตรวจพบ: ${LANG_LABEL[data.sourceLang as Lang] ?? data.sourceLang}` : "ตรวจหาภาษา" }]}
+        items={[{ key: "auto", label: data ? `ตรวจพบ: ${langName(data.sourceLang)}` : "ตรวจหาภาษา" }]}
       />
     ),
     target: (
       <View ref={targetRow} collapsable={false}>
         <LanguageTabs
           active={target}
-          items={recents.map((l) => ({ key: l, label: LANG_LABEL[l] }))}
+          items={recents.map((l) => ({ key: l, label: langName(l) }))}
           onSelect={(k) => setTarget(k as Lang)}
           trailing={
             <PressableScale
@@ -206,7 +207,7 @@ export default function Index() {
             scrollKey={batch}
             dock={
               <BottomDock
-                detected={data ? (LANG_LABEL[data.sourceLang as Lang] ?? data.sourceLang) : undefined}
+                detected={data ? langName(data.sourceLang) : undefined}
                 target={target}
                 onOpenLanguages={() => setSheetOpen(true)}
                 onTranslate={submit}

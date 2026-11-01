@@ -1,10 +1,9 @@
 import { Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import type { Lang } from "../api";
+import { type Lang, langName } from "../../shared/languages";
 import { ArrowRight, ChevronDown } from "./icons";
 import { LoadingDots } from "./LoadingDots";
 import { PressableScale } from "./PressableScale";
-import { LANG_LABEL } from "./text";
 
 type Props = {
   detected?: string; // source language name once known
@@ -28,11 +27,11 @@ export function BottomDock({ detected, target, onOpenLanguages, onTranslate, can
         <ArrowRight size={20} className="text-muted" />
         <PressableScale
           accessibilityRole="button"
-          accessibilityLabel={`ภาษาปลายทาง ${LANG_LABEL[target]}`}
+          accessibilityLabel={`ภาษาปลายทาง ${langName(target)}`}
           onPress={onOpenLanguages}
           className="h-12 flex-1 flex-row items-center justify-center gap-1 rounded-container bg-chip hover:bg-line"
         >
-          <Text numberOfLines={1} className="font-sans-medium text-body text-ink">{LANG_LABEL[target]}</Text>
+          <Text numberOfLines={1} className="font-sans-medium text-body text-ink">{langName(target)}</Text>
           <ChevronDown size={18} className="text-ink" />
         </PressableScale>
       </View>

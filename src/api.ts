@@ -1,7 +1,7 @@
+import type { Lang } from "../shared/languages";
 import type { AiSettings } from "./providers";
 
-export const LANGS = ["th", "en", "ja", "zh", "ko", "vi", "id"] as const;
-export type Lang = (typeof LANGS)[number];
+export type { Lang };
 // Copied from worker/db.ts on purpose: the app never imports worker code.
 export type Result = { context: string; text: string; note: string; custom: boolean };
 export type TranslateResponse = { id: string; sourceLang: string; results: Result[] };

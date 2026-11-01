@@ -57,9 +57,12 @@ it("400 when text > 2000 chars", async () => {
   const res = await post("/api/translate", { text: "ก".repeat(2001), target: "en" });
   expect(res.status).toBe(400);
 });
-it("400 when target not in LANGS", async () => {
-  const res = await post("/api/translate", { text: "hi", target: "fr" });
+it("accepts target 'sw' and rejects 'xx-invalid'", async () => {
+  ask = async () => reply();
+  expect((await post("/api/translate", { text: "hello sw", target: "sw" })).status).toBe(200);
+  const res = await post("/api/translate", { text: "hi", target: "xx-invalid" });
   expect(res.status).toBe(400);
+  expect(await errorOf(res)).toBe("ภาษาปลายทางไม่ถูกต้อง");
 });
 it("400 when body is not JSON", async () => {
   const res = await post("/api/translate", "not json{");

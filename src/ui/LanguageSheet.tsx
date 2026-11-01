@@ -2,11 +2,10 @@ import { useEffect, useState } from "react";
 import { Modal, ScrollView, Text, useWindowDimensions, View } from "react-native";
 import Animated, { ReduceMotion, useAnimatedStyle, useReducedMotion, useSharedValue, withTiming } from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { LANGS, type Lang } from "../api";
+import { type Lang, LANGUAGES, langName } from "../../shared/languages";
 import { ArrowLeft, Check } from "./icons";
 import { motion } from "./motion";
 import { PressableScale } from "./PressableScale";
-import { LANG_LABEL } from "./text";
 
 type Props = { open: boolean; recents: Lang[]; selected: Lang; onSelect: (lang: Lang) => void; onClose: () => void };
 
@@ -43,7 +42,7 @@ export function LanguageSheet({ open, recents, selected, onSelect, onClose }: Pr
       onPress={() => onSelect(lang)}
       className={`h-14 flex-row items-center rounded-full px-4 ${lang === selected ? "bg-chip" : "hover:bg-chip"}`}
     >
-      <Text className="flex-1 font-sans text-input text-ink">{LANG_LABEL[lang]}</Text>
+      <Text className="flex-1 font-sans text-input text-ink">{langName(lang)}</Text>
       {lang === selected && <Check size={20} className="text-ink" />}
     </PressableScale>
   );
@@ -66,7 +65,7 @@ export function LanguageSheet({ open, recents, selected, onSelect, onClose }: Pr
             <Text className="px-4 pb-1 font-sans text-note text-muted">ภาษาที่ใช้ล่าสุด</Text>
             {recents.map(row)}
             <Text className="px-4 pb-1 pt-4 font-sans text-note text-muted">ภาษาทั้งหมด</Text>
-            {LANGS.map(row)}
+            {LANGUAGES.map((l) => row(l.code))}
           </ScrollView>
         </SafeAreaView>
       </Animated.View>

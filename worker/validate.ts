@@ -1,7 +1,7 @@
+import { isLang, type Lang } from "../shared/languages";
 import type { AiConfig } from "./env";
 
-export const LANGS = ["th", "en", "ja", "zh", "ko", "vi", "id"] as const;
-export type Lang = (typeof LANGS)[number];
+export type { Lang };
 export const PROVIDERS = ["anthropic", "gemini", "openai", "openrouter"] as const;
 export type Provider = (typeof PROVIDERS)[number];
 
@@ -25,8 +25,8 @@ export function validateTranslate(body: unknown): { text: string; target: Lang }
   if (typeof text !== "string" || typeof target !== "string") return BAD_BODY;
   const trimmed = text.trim();
   if (trimmed.length < 1 || trimmed.length > 2000) return "ข้อความต้องยาว 1–2000 ตัวอักษร";
-  if (!(LANGS as readonly string[]).includes(target)) return "ภาษาปลายทางไม่ถูกต้อง";
-  return { text: trimmed, target: target as Lang };
+  if (!isLang(target)) return "ภาษาปลายทางไม่ถูกต้อง";
+  return { text: trimmed, target };
 }
 
 export function validateContext(body: unknown): { context: string } | string {
